@@ -14,11 +14,13 @@ The four behavior labels are Eating, Locomotion, Resting, and Climbing. Resting 
 
 Start with a compact pretrained video classifier. Choose the model size after checking the dataset and available compute. Do not train from scratch unless the audit shows enough labeled clips to support it.
 
+See the [footage and compute audit](FOOTAGE-AUDIT.md) for the source inventory, metadata limits, class-count targets, and local hardware check. Use the [behavior interval annotation guide](ANNOTATION-GUIDE.md) for operational label rules and review procedure.
+
 ## Work plan
 
 | Dates | Work | Exit criteria |
 |---|---|---|
-| **Oct 7–11: Audit and protocol** | Inventory the 22 supplied clips (5 Eating, 10 Locomotion, 7 Resting); treat folder names as weak labels only. Find additional clips across all four behaviors. Record source clip, duration, available session/camera/room metadata, lighting, visibility, and occlusion. Confirm compute and set up the annotation guide. Make a clip-level train/validation/test split plan before extracting windows. | Inventory and data gaps are documented; annotation rules and metadata fields are ready; a group-aware split is feasible or its limitations are recorded; model size and data target are set from actual counts. |
+| **Oct 7–11: Audit and protocol** | Inventory the 22 supplied clips (5 Eating, 10 Locomotion, 7 Resting); treat folder names as weak labels only. Find additional clips across all four behaviors, prioritizing Climbing. Record source clip, duration, available session/camera/room metadata, lighting, visibility, and occlusion. Confirm compute and use the annotation guide. Make a clip-level train/validation/test split plan before extracting windows. | [Footage audit](FOOTAGE-AUDIT.md) and [annotation guide](ANNOTATION-GUIDE.md) are complete; metadata gaps and data targets are explicit; a group-aware split is feasible or its limitations are recorded. |
 | **Oct 12–18: Collect and label** | Gather more examples, prioritizing missing and underrepresented classes. Annotate behavior intervals with start/end times. Have two people independently label a 20% shared sample, reconcile disagreements, then complete the remaining labels. Mark transitions and uncertain intervals explicitly. Lock the held-out source clips before making windows. | Every included window has one reviewed label and a source timecode; held-out clips do not appear in training or validation; per-class clip and window counts are known. |
 | **Oct 19–25: Train and evaluate** | Extract five-second windows from the split clips; exclude transition-crossing windows. Use a compact pretrained video classifier, with model size set by the compute audit. Train on the training set and choose settings and the low-confidence threshold on validation data only. Evaluate the locked test set once. | Reproducible training and inference; held-out macro F1, per-class precision/recall/F1, confusion matrix, and Uncertain/coverage rate are recorded. Any class missing adequate test examples is called out rather than hidden in an aggregate score. |
 | **Oct 26–31: Demo and report** | Build the notebook or script that accepts a short clip, predicts a label and confidence for each five-second window, and displays a time-coded timeline. Review errors by class and visibility conditions. Document the dataset, split, annotation agreement, model, metric results, limitations, and next steps. Re-run the demo from the documented setup. | The demo runs reproducibly on a clip outside training data; predictions link to original time ranges; the report distinguishes measured results from planned work and states data/evaluation limits. |
@@ -51,7 +53,7 @@ All three review the class definitions and final error analysis. The annotation 
 
 ## Decisions to make during the first audit
 
-1. Final dataset size and examples needed per class, based on source availability and test coverage.
-2. Model variant and compute setup, based on the available hardware.
+1. The audit sets an initial pilot target of 20 verified source clips per class, with five reserved for test; revise only after source and session availability are confirmed.
+2. Model variant and compute setup, based on the available hardware and a short memory smoke run.
 3. Window stride and whether windows overlap. Start with non-overlapping five-second windows; record timestamps so this can be changed without relabeling.
 4. Any numeric performance target, after class counts and held-out test coverage are known.
