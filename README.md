@@ -9,6 +9,8 @@ The project is in planning and data-preparation. No behavior model has been trai
 ## Start here
 
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
+- [Footage and compute audit](docs/FOOTAGE-AUDIT.md)
+- [Behavior interval annotation guide](docs/ANNOTATION-GUIDE.md)
 - [Behavior glossary](GLOSSARY.md)
 - [Decision: classify short behavior clips](docs/adr/0001-classify-short-behavior-clips.md)
 - [Phase 2 plan issue #1](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/1)
@@ -20,7 +22,7 @@ The next actionable ticket is [#3: Audit video sources and lock annotation rules
 
 The agreed labels are Eating, Locomotion, Resting, and Climbing. Phase 2 adapts the brief's still-image classification option to five-second video windows because movement and duration are needed to identify Locomotion and Resting. The initial model will use a compact pretrained video classifier selected after the data and compute audit.
 
-The current 22 clips have folder-level labels only. They are not verified behavior intervals, and Climbing examples and room/camera coverage still need to be confirmed. See the plan for annotation, split, and evaluation rules.
+The current 22 clips have folder-level labels only. They are not verified behavior intervals, no Climbing example has been verified, and room/camera coverage remains unknown. See the [footage audit](docs/FOOTAGE-AUDIT.md) for the inventory and compute check, the [annotation guide](docs/ANNOTATION-GUIDE.md) for labeling rules, and the plan for split and evaluation rules.
 
 ## Data handling
 
