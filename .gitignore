@@ -1,0 +1,22 @@
+# Raw footage and bundled source data
+data/raw/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.zip
+
+# Model weights and generated experiment output
+models/
+checkpoints/
+outputs/
+runs/
+*.pt
+*.pth
+*.onnx
+
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
