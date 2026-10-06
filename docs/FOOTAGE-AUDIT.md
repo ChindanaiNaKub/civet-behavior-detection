@@ -11,8 +11,8 @@ Durations and stream properties below come from `ffprobe` on the extracted files
 
 | Source file | Existing folder label | Duration (s) | On-screen date/time | On-screen camera | Format |
 |---|---:|---:|---|---|---|
-| `Eating/25690518092326646.mp4` | Eating | 80.721 | 2026-05-18 15:28:34 | Camera 01 | 1920×1080, 25 fps, HEVC |
-| `Eating/25690518092408866.mp4` | Eating | 8.800 | 2026-05-18 17:25:15 | Camera 02 | 1920×1080, 25 fps, HEVC |
+| `Eating/25690518092326646.mp4` | Eating | 80.721 | 2026-05-13 15:28:34 | Camera 02 | 1920×1080, 25 fps, HEVC |
+| `Eating/25690518092408866.mp4` | Eating | 8.800 | 2026-05-13 17:25:15 | Camera 02 | 1920×1080, 25 fps, HEVC |
 | `Eating/25690519193422801.mp4` | Eating | 50.481 | 2026-05-19 15:51:39 | Camera 02 | 1920×1080, 25 fps, HEVC |
 | `Eating/25690519193547292.mp4` | Eating | 68.840 | 2026-05-19 15:59:55 | Camera 02 | 1920×1080, 25 fps, HEVC |
 | `Eating/25690519193808204.mp4` | Eating | 45.599 | 2026-05-19 16:39:16 | Camera 03 | 1920×1080, 25 fps, HEVC |
