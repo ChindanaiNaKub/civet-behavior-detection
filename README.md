@@ -13,6 +13,7 @@ The project is in planning and data-preparation. No behavior model has been trai
 - [Behavior interval annotation guide](docs/ANNOTATION-GUIDE.md)
 - [Behavior glossary](GLOSSARY.md)
 - [Decision: classify short behavior clips](docs/adr/0001-classify-short-behavior-clips.md)
+- [Behavior dataset ledger and templates](data/README.md)
 - [Phase 2 plan issue #1](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/1)
 - [Phase 2 spec issue #2](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/2)
 
