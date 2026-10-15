@@ -1,6 +1,6 @@
 # Behavior dataset
 
-This directory holds the source-clip ledger and CSV templates for the reviewed behavior-interval dataset. Raw footage stays in team-approved storage and is not copied into this repository.
+This directory holds the tracked source clips and the source-clip ledger and CSV templates for the reviewed behavior-interval dataset. The 22 clips are committed under [`raw/`](raw/) exactly as delivered; the source archive is not copied here.
 
 ## Files
 
