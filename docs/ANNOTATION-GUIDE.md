@@ -38,6 +38,12 @@ Use this guide to assign one behavior label to each clear interval in a source c
 
 Record room, camera ID, session, and capture time only when a source record confirms the value. Use `unknown` instead of inferring them from folder names, numeric filenames, or the proposed four-room/four-camera setting.
 
+## Machine pre-labels
+
+Human effort is verification, not first-pass labeling. The pipeline proposes behavior intervals, deriving Resting from sustained low motion (at least five seconds) and Locomotion from location change, and proposing Eating and Climbing with a zero-shot model. For each proposed interval, the reviewer accepts it, edits its boundaries or label, or marks it Transition or Uncertain; label from scratch only where the pipeline proposes nothing or the proposal is wrong.
+
+The gold set used for reported metrics must be labeled by a human who has not seen the machine proposal. Otherwise the score measures agreement with the model, not the model's accuracy. See [ADR 0003](adr/0003-automate-prelabeling-with-human-gold-set.md).
+
 ## Review procedure
 
 - Two annotators independently label the same 20% of clips, with the sample spread across available source folders and conditions. If a class has too few examples for a useful shared sample, review every candidate clip for that class together.
