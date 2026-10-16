@@ -73,3 +73,16 @@ The table below compares the target to the current **folder-level candidates**. 
 | Climbing | 0 | 20 | 20 |
 
 Do not count two segments from one original clip as two source clips. Freeze the held-out source clips before extracting overlapping windows.
+
+## Revised source-count targets
+
+The supplied archive is the whole dataset rather than a sample of a larger one, so the 20-clips-per-class target above cannot be met by collecting more of the same footage. The ceilings are the folder-level candidates themselves.
+
+| Behavior | Ceiling | Initial target | Revised target |
+|---|---:|---:|---|
+| Eating | 5 clips, 254 s | 20 | every clip that review verifies |
+| Locomotion | 10 clips, 139 s | 20 | every clip that review verifies |
+| Resting | 7 clips, 659 s | 20 | every clip that review verifies |
+| Climbing | 0 clips | 20 | none available |
+
+Report the verified count for each class beside every metric, and state plainly that Climbing has no source clip. Do not present a four-class result. `scripts/split.py` writes the split for the three classes that exist and refuses to write one that leaves a class out of a split.

@@ -33,6 +33,10 @@ from pathlib import Path
 
 import numpy as np
 
+# The window grid is shared with the window builder and the demo, so the
+# pre-labels and the classifier see the same five-second spans.
+from labels import MIN_WINDOW_S as PARTIAL_MIN_S, WINDOW_S
+
 # Tunables, calibrated on data/raw (see docs/PRELABEL-SMOKE-TEST.md).
 SAMPLE_FPS = 8.0            # frames kept per second of video
 MOTION_WH = (160, 120)      # (w, h) for motion analysis
@@ -44,8 +48,6 @@ REST_MIN_S = 5.0            # sustained low motion needed for Resting
 MOVE_SPAN_S = 1.0           # window for centroid displacement
 MOVE_MIN = 0.08             # displacement / frame width, min for Locomotion
 MIN_RUN_S = 1.0             # shorter runs inherit the previous label
-WINDOW_S = 5.0              # zero-shot window length
-PARTIAL_MIN_S = 2.0         # trailing window shorter than this is dropped
 ZS_MIN_PROB = 0.35          # softmax below this -> Uncertain
 MODEL_ID = "microsoft/xclip-base-patch16-zero-shot"
 PROMPTS = [

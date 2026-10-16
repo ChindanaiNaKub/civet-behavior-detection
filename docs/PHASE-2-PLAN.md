@@ -14,9 +14,28 @@ The four behavior labels are Eating, Locomotion, Resting, and Climbing. Resting 
 
 Start with a compact pretrained video classifier. Choose the model size after checking the dataset and available compute. Do not train from scratch unless the audit shows enough labeled clips to support it.
 
+Deliver Task 1 of the brief as a CNN over the frames of each window: an ImageNet-pretrained ResNet-18 backbone, mean and max pooling over the window's eight frames, and only the pooling head trained on project data. It fits the 4 GiB GPU on the audit workstation. See [ADR 0004](adr/0004-train-a-cnn-over-window-frames.md). Do not train a video network from scratch on 22 clips.
+
+The brief names the four classes Walking, Eating, Resting and Climbing. This repository labels the walking class Locomotion, because the Phase 1 glossary widened it to any movement that changes location, including travel along a structure. Report the class as Walking and give Locomotion as its operational definition, so the deliverable uses the brief's word.
+
 Pre-label intervals automatically rather than hand-labeling every clip: derive Resting from sustained low motion (at least five seconds) and Locomotion from location change, and use a compact zero-shot pretrained video model to propose Eating and Climbing intervals. A human verifies and corrects the proposed timeline. Auto labels are weak supervision only and never enter the reported evaluation; a small, fully human-labeled gold set of whole source clips is the only data used for reported model quality. See [ADR 0003](adr/0003-automate-prelabeling-with-human-gold-set.md).
 
 See the [footage and compute audit](FOOTAGE-AUDIT.md) for the source inventory, metadata limits, class-count targets, and local hardware check. Use the [behavior interval annotation guide](ANNOTATION-GUIDE.md) for operational label rules and review procedure.
+
+## Where this plan stands
+
+As of 2026-10-16. A checked box has its artifact in the repository.
+
+- [x] **Audit and protocol.** [Footage audit](FOOTAGE-AUDIT.md) and [annotation guide](ANNOTATION-GUIDE.md) are complete. Metadata gaps are explicit: no session IDs, no room mapping, and camera and class are confounded.
+- [x] **Pre-labeler and its smoke test.** `scripts/prelabel.py` proposes a timeline for all 22 clips in 2 min 41 s. Resting is reliable, Locomotion is a weak hint, and Eating and Climbing come out empty. See [the smoke test](PRELABEL-SMOKE-TEST.md).
+- [x] **Pipeline for #5 and #6.** `scripts/windows.py` builds five-second windows from verified intervals, `scripts/split.py` writes the split ledger, `scripts/train.py` trains the frame CNN, `scripts/evaluate.py` scores the locked test set once, and `scripts/demo.py` prints a clip's predicted timeline.
+- [x] **Review tooling for #4.** `scripts/review.py` serves each clip with its proposed intervals for a human to accept or correct, and `scripts/agreement.py` compares the two independent gold-set passes.
+- [ ] **Human verification of the timeline.** `data/annotations.csv` is still an empty header. This is the one step no script can take.
+- [ ] **The human gold set.** Two people label the shared sample blind, then reconcile. `data/agreement.csv` records the result.
+- [ ] **Lock the test set.** `scripts/split.py` proposes the assignment. A person reviews `data/splits.csv` and fills `test_locked_by`.
+- [ ] **Train, evaluate, and report.** Run the pipeline on the verified windows and write the report from the numbers it produces.
+
+The plan below is unchanged in its target date and its evaluation rules. What changed is the model family (ADR 0004) and the split rule (ADR 0005).
 
 ## Work plan
 
@@ -24,7 +43,7 @@ See the [footage and compute audit](FOOTAGE-AUDIT.md) for the source inventory, 
 |---|---|---|
 | **Oct 7–11: Audit and protocol** | Inventory the 22 supplied clips (5 Eating, 10 Locomotion, 7 Resting); treat folder names as weak labels only. Find additional clips across all four behaviors, prioritizing Climbing. Record source clip, duration, available session/camera/room metadata, lighting, visibility, and occlusion. Confirm compute and use the annotation guide. Make a clip-level train/validation/test split plan before extracting windows. | [Footage audit](FOOTAGE-AUDIT.md) and [annotation guide](ANNOTATION-GUIDE.md) are complete; metadata gaps and data targets are explicit; a group-aware split is feasible or its limitations are recorded. |
 | **Oct 12–18: Collect, pre-label, and verify** | Gather more examples, prioritizing missing and underrepresented classes. Run the automated pre-labeler to propose behavior intervals and derive Resting/Locomotion from motion; a human verifies and corrects the timeline. Two people independently label the gold sample and reconcile disagreements; the gold set stays fully human. Mark transitions and uncertain intervals explicitly. Lock the held-out source clips before making windows. | Every included window has one verified label and a source timecode; a fully human gold set is fixed; held-out clips do not appear in training or validation; per-class clip and window counts are known. |
-| **Oct 19–25: Train and evaluate** | Extract five-second windows from the split clips; exclude transition-crossing windows. Use a compact pretrained video classifier, with model size set by the compute audit. Train on the verified training set (auto pre-labels only as reduced-weight weak supervision) and choose settings and the low-confidence threshold on validation data only. Evaluate the locked test set once. | Reproducible training and inference; held-out macro F1, per-class precision/recall/F1, confusion matrix, and Uncertain/coverage rate are recorded. Any class missing adequate test examples is called out rather than hidden in an aggregate score. |
+| **Oct 19–25: Train and evaluate** | Extract five-second windows from the split clips; exclude transition-crossing windows. Use the frame CNN from [ADR 0004](adr/0004-train-a-cnn-over-window-frames.md), with the class list from `scripts/labels.py`. Train on the verified training set (auto pre-labels only as reduced-weight weak supervision) and choose settings and the low-confidence threshold on validation data only. Evaluate the locked test set once. | Reproducible training and inference; held-out macro F1, per-class precision/recall/F1, confusion matrix, and Uncertain/coverage rate are recorded. Any class missing adequate test examples is called out rather than hidden in an aggregate score. |
 | **Oct 26–31: Demo and report** | Build the notebook or script that accepts a short clip, predicts a label and confidence for each five-second window, and displays a time-coded timeline. Review errors by class and visibility conditions. Document the dataset, split, annotation agreement, model, metric results, limitations, and next steps. Re-run the demo from the documented setup. | The demo runs reproducibly on a clip outside training data; predictions link to original time ranges; the report distinguishes measured results from planned work and states data/evaluation limits. |
 
 ## Team workstreams
@@ -55,10 +74,10 @@ All three review the class definitions and final error analysis. The annotation 
 - **Overstated model performance:** report per-class results and Uncertain coverage; describe this as a baseline, not a validated production system.
 - **Automated pre-label quality unproven:** Resting and Climbing are the likely failure modes. Run one smoke test before committing the plan to the pre-labeler; fall back to manual labeling for any class the pre-labeler cannot handle.
 
-## Decisions to make during the first audit
+## Decisions made
 
-1. The audit sets an initial pilot target of 20 verified source clips per class, with five reserved for test; revise only after source and session availability are confirmed.
-2. Model variant and compute setup, based on the available hardware and a short memory smoke run.
-3. Window stride and whether windows overlap. Start with non-overlapping five-second windows; record timestamps so this can be changed without relabeling.
-4. Any numeric performance target, after class counts and held-out test coverage are known.
-5. Pre-labeler choice and the size and scope of the human gold set, after the pre-labeler smoke test.
+1. **The 20-clips-per-class target is revised.** The supplied archive is the whole dataset, so the ceilings are Eating 5, Locomotion 10, Resting 7 and Climbing 0. The target becomes every clip that review verifies, with the per-class counts reported as they are found. See the revision in the [footage audit](FOOTAGE-AUDIT.md#revised-source-count-targets).
+2. **Model and compute.** A frame CNN over an ImageNet-pretrained ResNet-18 backbone. One training run takes about 40 seconds for 12 epochs on the RTX 3050. See [ADR 0004](adr/0004-train-a-cnn-over-window-frames.md).
+3. **Windows.** Non-overlapping five-second windows, all exactly five seconds long so the input shape is uniform, with a shorter tail dropped. A window is kept only when one verified interval covers it completely, which excludes transition-crossing windows by construction. The annotation keeps source timecodes, so the rule can change without relabeling.
+4. **Numeric target.** None is set. With 5 Eating clips and no Climbing clip, a target would be a guess. Report macro F1 and per-class numbers with their support and abstain rate, and let those be the result.
+5. **Pre-labeler scope.** Resting and Locomotion stay auto-derived as hints and Eating and Climbing are labeled by hand, per the smoke test's next step. The zero-shot stage must not carry weight in reported metrics.

@@ -4,7 +4,9 @@ Phase 2 project for building a checkable short-clip behavior-classification base
 
 ## Current status
 
-The project is in planning and data-preparation. No behavior model has been trained or evaluated yet. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
+The pipeline is built and runs end to end. What is missing is the human step: `data/annotations.csv` is still an empty header, so no verified window exists yet and no reported number has been produced. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
+
+The model classes are Eating, Locomotion and Resting. The brief calls the third class Walking, and the repository calls it Locomotion because the Phase 1 glossary widened it to any movement that changes location. Climbing is a valid annotation but has no source clip, so it is not a model class. See [ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md) for the model and [ADR 0005](docs/adr/0005-split-by-clip-not-by-recording-group.md) for the split rule.
 
 ## Start here
 
@@ -16,11 +18,67 @@ The project is in planning and data-preparation. No behavior model has been trai
 - [Decision: classify short behavior clips](docs/adr/0001-classify-short-behavior-clips.md)
 - [Decision: track source clips in the repository](docs/adr/0002-track-source-clips-in-repository.md)
 - [Decision: automate pre-labeling with a human gold set](docs/adr/0003-automate-prelabeling-with-human-gold-set.md)
+- [Decision: train a CNN over the frames of each window](docs/adr/0004-train-a-cnn-over-window-frames.md)
+- [Decision: split by clip, not by recording group](docs/adr/0005-split-by-clip-not-by-recording-group.md)
 - [Behavior dataset ledger and templates](data/README.md)
 - [Phase 2 plan issue #1](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/1)
 - [Phase 2 spec issue #2](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/2)
 
 The pre-labeler for [#9: Auto pre-label behavior timelines (zero-shot)](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/9) is in `scripts/prelabel.py`. Its [smoke test](docs/PRELABEL-SMOKE-TEST.md) found that motion alone pre-labels Resting reliably and Locomotion partly, while the zero-shot model proposes no Eating interval and only false Climbing ones — so those two classes are labeled by hand. That unblocks [#4: Create reviewed behavior-interval dataset](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/4). Follow the ticket links for the remaining dataset, classifier, and evaluation work.
+
+## Run the pipeline
+
+Install the pinned versions, then run these from the repository root. Steps 2 and 4 need a person.
+
+```
+python3 -m pip install -r requirements.txt
+```
+
+1. Propose a behavior timeline for every clip. Takes about three minutes on the audit GPU and writes `outputs/prelabel/timeline.csv`.
+
+```
+python3 scripts/prelabel.py
+```
+
+2. Verify those proposals against the video. This is the human step, roughly two hours for all 22 clips. The page serves each clip under the player and saves accepted intervals to `data/annotations.csv`.
+
+```
+python3 scripts/review.py
+```
+
+3. Write the split ledger and the windows. `scripts/split.py` assigns every clip to train, validation or test and refuses to write a split that leaves a class out.
+
+```
+python3 scripts/split.py
+python3 scripts/windows.py
+```
+
+4. Review `data/splits.csv` and record who locked the test set in `test_locked_by`. Do this before the next step if the numbers are to be reported, because the test set must be fixed before it is read.
+
+5. Train, then score the locked test set once. The threshold is chosen on the validation windows, and the test windows are read once, after the threshold is fixed.
+
+```
+python3 scripts/train.py
+python3 scripts/evaluate.py
+```
+
+6. Show one clip's predicted timeline against its own timecodes. The threshold comes from step 5.
+
+```
+python3 scripts/demo.py data/raw/Resting/25690519194809256.mp4
+```
+
+7. Check the pipeline logic. No GPU, no video and no model download.
+
+```
+python3 -m pytest scripts
+```
+
+For the human gold set, run step 2 a second time with `--out data/annotations-second.csv --blind <clip_id>` for each gold clip, then compare the two independent passes.
+
+```
+python3 scripts/agreement.py
+```
 
 ## Phase 2 scope
 
@@ -38,7 +96,21 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 
 - `GLOSSARY.md` — agreed behavior language.
 - `data/raw/` — the 22 tracked source clips, one subdirectory per folder label.
+- `scripts/labels.py` — the behavior label domain and the CSV contracts, so a label rule is stated once.
 - `scripts/prelabel.py` — behavior pre-labeler: Resting from sustained low motion, Locomotion from location change, Eating/Climbing proposed by zero-shot X-CLIP; writes a per-interval timeline CSV for review. Logic checks in `scripts/test_prelabel.py`.
+- `scripts/review.py` — local review page: plays each clip with its proposed intervals and writes verified intervals to `data/annotations.csv`. Supports blind clips for the gold set.
+- `scripts/agreement.py` — compares two independent label passes on the shared sample and writes `data/agreement.csv`.
+- `scripts/split.py` — assigns every clip to train, validation or test and writes `data/splits.csv`.
+- `scripts/windows.py` — builds exactly five-second labeled windows from the verified intervals, keeping only windows one verified model-class interval covers completely.
+- `scripts/frames.py` — decodes the frames of a window.
+- `scripts/model.py` — the frame CNN and its checkpoint format.
+- `scripts/train.py` — trains on the train split, early-stops on the validation split.
+- `scripts/evaluate.py` — chooses the abstain threshold on validation, scores the locked test set once, and writes the report block.
+- `scripts/demo.py` — prints one clip's predicted behavior timeline.
+- `scripts/metrics.py` — class metrics that count an abstention as a miss.
+- `requirements.txt` — the pinned versions the pipeline was run with.
 - `docs/PHASE-2-PLAN.md` — schedule, workstreams, evaluation, and risks.
 - `docs/adr/` — project decisions and their rationale.
 - `docs/agents/` — issue-tracker and domain-document conventions for agents.
+
+`outputs/` holds generated artifacts and is not tracked: the pre-label timeline, the windows, the checkpoints and the evaluation output. Every one of them is regenerated by the commands above.
