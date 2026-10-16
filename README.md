@@ -14,15 +14,18 @@ The project is in planning and data-preparation. No behavior model has been trai
 - [Behavior glossary](GLOSSARY.md)
 - [Decision: classify short behavior clips](docs/adr/0001-classify-short-behavior-clips.md)
 - [Decision: track source clips in the repository](docs/adr/0002-track-source-clips-in-repository.md)
+- [Decision: automate pre-labeling with a human gold set](docs/adr/0003-automate-prelabeling-with-human-gold-set.md)
 - [Behavior dataset ledger and templates](data/README.md)
 - [Phase 2 plan issue #1](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/1)
 - [Phase 2 spec issue #2](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/2)
 
-The next actionable ticket is [#3: Audit video sources and lock annotation rules](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/3). Follow the ticket links for the remaining dataset, classifier, and evaluation work.
+The next actionable ticket is [#9: Auto pre-label behavior timelines (zero-shot)](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/9), which unblocks [#4: Create reviewed behavior-interval dataset](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/4). Follow the ticket links for the remaining dataset, classifier, and evaluation work.
 
 ## Phase 2 scope
 
 The agreed labels are Eating, Locomotion, Resting, and Climbing. Phase 2 adapts the brief's still-image classification option to five-second video windows because movement and duration are needed to identify Locomotion and Resting. The initial model will use a compact pretrained video classifier selected after the data and compute audit.
+
+Behavior intervals are pre-labeled automatically, not hand-labeled from scratch: Resting and Locomotion come from motion, and a zero-shot model proposes Eating and Climbing for human verification. A small human gold set is the only data used for reported model quality. See [decision 0003](docs/adr/0003-automate-prelabeling-with-human-gold-set.md).
 
 The 22 audited clips are tracked in `data/raw/` so collaborators get them on clone. They are stored as delivered and are unverified: folder-level labels only, no verified behavior intervals, no verified Climbing example, and room/camera coverage unknown. See the [footage audit](docs/FOOTAGE-AUDIT.md) for the inventory and compute check, the [annotation guide](docs/ANNOTATION-GUIDE.md) for labeling rules, and the plan for split and evaluation rules.
 
