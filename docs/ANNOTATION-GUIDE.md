@@ -42,7 +42,11 @@ Record room, camera ID, session, and capture time only when a source record conf
 
 Human effort is verification, not first-pass labeling. The pipeline proposes behavior intervals, deriving Resting from sustained low motion (at least five seconds) and Locomotion from location change, and proposing Eating and Climbing with a zero-shot model. For each proposed interval, the reviewer accepts it, edits its boundaries or label, or marks it Transition or Uncertain; label from scratch only where the pipeline proposes nothing or the proposal is wrong.
 
+Run `python3 scripts/review.py` to do this against the video. The page serves each clip with its proposed intervals under the player, and writes accepted intervals to `data/annotations.csv`. Add `--blind <clip_id>` for a gold-set clip; the page then hides every machine proposal, which is required for the gold set. See the tool's `--counts` flag to see what is left.
+
 The gold set used for reported metrics must be labeled by a human who has not seen the machine proposal. Otherwise the score measures agreement with the model, not the model's accuracy. See [ADR 0003](adr/0003-automate-prelabeling-with-human-gold-set.md).
+
+The second annotator runs the same tool with `--out data/annotations-second.csv` on the shared sample only, then `python3 scripts/agreement.py` compares the two files and writes `data/agreement.csv` with the reconciliation columns left for the two annotators.
 
 ## Review procedure
 
