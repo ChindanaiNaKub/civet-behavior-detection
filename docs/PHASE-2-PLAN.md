@@ -10,7 +10,7 @@
 
 Adapt the Phase 2 image-classification task to classify five-second video windows. A single image cannot establish movement or duration, which are needed for the agreed Locomotion and Resting definitions. This plan does not include YOLO bounding-box detection or pose/keypoint analysis. See [ADR 0001](adr/0001-classify-short-behavior-clips.md).
 
-The four behavior labels are Eating, Locomotion, Resting, and Climbing. Resting requires at least five seconds of continuous inactivity; when that duration is confirmed, annotate from the inactivity onset. Split annotations at behavior changes. Exclude windows crossing transitions. For overlapping actions, assign the most specific visible behavior; use Uncertain if none is clear. Use Uncertain for low-confidence model predictions as well.
+The model classes are Eating, Locomotion and Resting. Climbing stays a valid annotation label but is out of scope as a model class ([ADR 0007](adr/0007-drop-climbing-from-phase-2-scope.md)). Resting requires at least five seconds of continuous inactivity; when that duration is confirmed, annotate from the inactivity onset. Split annotations at behavior changes. Exclude windows crossing transitions. For overlapping actions, assign the most specific visible behavior; use Uncertain if none is clear. Use Uncertain for low-confidence model predictions as well.
 
 Start with a compact pretrained video classifier. Choose the model size after checking the dataset and available compute. Do not train from scratch unless the audit shows enough labeled clips to support it.
 
@@ -24,12 +24,13 @@ See the [footage and compute audit](FOOTAGE-AUDIT.md) for the source inventory, 
 
 ## Where this plan stands
 
-As of 2026-10-16. A checked box has its artifact in the repository.
+As of 2026-10-17. A checked box has its artifact in the repository.
 
 - [x] **Audit and protocol.** [Footage audit](FOOTAGE-AUDIT.md) and [annotation guide](ANNOTATION-GUIDE.md) are complete. Metadata gaps are explicit: no session IDs, no room mapping, and camera and class are confounded.
 - [x] **Pre-labeler and its smoke test.** `scripts/prelabel.py` proposes a timeline for all 22 clips in 2 min 41 s. Resting is reliable, Locomotion is a weak hint, and Eating and Climbing come out empty. See [the smoke test](PRELABEL-SMOKE-TEST.md).
 - [x] **Pipeline for #5 and #6.** `scripts/windows.py` builds five-second windows from verified intervals, `scripts/split.py` writes the split ledger, `scripts/train.py` trains the frame CNN, `scripts/evaluate.py` scores the locked test set once, and `scripts/demo.py` prints a clip's predicted timeline.
 - [x] **Review tooling for #4.** `scripts/review.py` serves each clip with its proposed intervals for a human to accept or correct, and `scripts/agreement.py` compares the two independent gold-set passes.
+- [x] **Climbing scope decided.** The two candidate intervals were reviewed and are not climbing, so the class list stays at three. See [ADR 0007](adr/0007-drop-climbing-from-phase-2-scope.md) and [#16](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/16).
 - [ ] **Human verification of the timeline.** `data/annotations.csv` is still an empty header. This is the one step no script can take.
 - [ ] **The human gold set.** Two people label the shared sample blind, then reconcile. `data/agreement.csv` records the result.
 - [ ] **Lock the test set.** `scripts/split.py` proposes the assignment. A person reviews `data/splits.csv` and fills `test_locked_by`.
@@ -81,4 +82,4 @@ All three review the class definitions and final error analysis. The annotation 
 3. **Windows.** Non-overlapping five-second windows, all exactly five seconds long so the input shape is uniform, with a shorter tail dropped. A window is kept only when one verified interval covers it completely, which excludes transition-crossing windows by construction. The annotation keeps source timecodes, so the rule can change without relabeling.
 4. **Numeric target.** None is set. With 5 Eating clips and no Climbing clip, a target would be a guess. Report macro F1 and per-class numbers with their support and abstain rate, and let those be the result.
 5. **Pre-labeler scope.** Resting and Locomotion stay auto-derived as hints and Eating and Climbing are labeled by hand, per the smoke test's next step. The zero-shot stage must not carry weight in reported metrics.
-6. **The class list stays open on Climbing.** No Climbing-labelled clip was supplied, but the sampled-frame screen that concluded it is absent says it cannot prove that, so the three-class `MODEL_CLASSES` list holds only until a full interval pass either finds a Climbing interval or the annotation guide writes the rule that excludes the candidate intervals. See [ADR 0006](adr/0006-climbing-has-no-evidence-of-absence.md) and [#16](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/16).
+6. **Climbing is out of scope.** No Climbing-labelled clip was supplied, the two candidate intervals in [#16](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/16) were reviewed and are not climbing, and the instructor confirmed three classes are enough. `MODEL_CLASSES` stays at three. Climbing remains a valid annotation label that never becomes a model class, and no Climbing work is planned. The review was done by one person, not the two #16 asked for. See [ADR 0007](adr/0007-drop-climbing-from-phase-2-scope.md), which supersedes [ADR 0006](adr/0006-climbing-has-no-evidence-of-absence.md).
