@@ -38,6 +38,12 @@ Use this guide to assign one behavior label to each clear interval in a source c
 
 Record room, camera ID, session, and capture time only when a source record confirms the value. Use `unknown` instead of inferring them from folder names, numeric filenames, or the proposed four-room/four-camera setting.
 
+## Climbing
+
+Climbing is out of scope as a model class ([ADR 0007](adr/0007-drop-climbing-from-phase-2-scope.md)), and no Climbing interval is expected in the supplied 22 clips: the two candidate intervals raised in [#16](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/16) were reviewed and are not climbing. The definition above is unchanged.
+
+Climbing stays a valid label. If you see a real climb, record it as Climbing and add a note rather than forcing it into Locomotion. It is not a model class, so any window it touches is excluded from training and evaluation. The pre-labeler can still propose Climbing; its proposals on the supplied clips were all false positives, so reject them unless the video shows a climb.
+
 ## Machine pre-labels
 
 Human effort is verification, not first-pass labeling. The pipeline proposes behavior intervals, deriving Resting from sustained low motion (at least five seconds) and Locomotion from location change, and proposing Eating and Climbing with a zero-shot model. For each proposed interval, the reviewer accepts it, edits its boundaries or label, or marks it Transition or Uncertain; label from scratch only where the pipeline proposes nothing or the proposal is wrong.

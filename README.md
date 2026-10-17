@@ -6,7 +6,7 @@ Phase 2 project for building a checkable short-clip behavior-classification base
 
 The pipeline is built and runs end to end. What is missing is the human step: `data/annotations.csv` is still an empty header, so no verified window exists yet and no reported number has been produced. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
 
-The model classes are Eating, Locomotion and Resting. The brief calls the third class Walking, and the repository calls it Locomotion because the Phase 1 glossary widened it to any movement that changes location. Climbing is a valid annotation but has no source clip, so it is not a model class. See [ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md) for the model and [ADR 0005](docs/adr/0005-split-by-clip-not-by-recording-group.md) for the split rule.
+The model classes are Eating, Locomotion and Resting. The brief calls the third class Walking, and the repository calls it Locomotion because the Phase 1 glossary widened it to any movement that changes location. Climbing is out of scope: no Climbing clip was supplied, the two candidate intervals were reviewed and are not climbing, and the instructor confirmed three classes are enough. It stays a valid annotation label that never becomes a model class, and no Climbing work is planned. See [ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md) for the model, [ADR 0005](docs/adr/0005-split-by-clip-not-by-recording-group.md) for the split rule and [ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md) for Climbing.
 
 ## Start here
 
@@ -20,6 +20,8 @@ The model classes are Eating, Locomotion and Resting. The brief calls the third 
 - [Decision: automate pre-labeling with a human gold set](docs/adr/0003-automate-prelabeling-with-human-gold-set.md)
 - [Decision: train a CNN over the frames of each window](docs/adr/0004-train-a-cnn-over-window-frames.md)
 - [Decision: split by clip, not by recording group](docs/adr/0005-split-by-clip-not-by-recording-group.md)
+- [Decision: Climbing has no evidence of absence (superseded)](docs/adr/0006-climbing-has-no-evidence-of-absence.md)
+- [Decision: drop Climbing from Phase 2 scope](docs/adr/0007-drop-climbing-from-phase-2-scope.md)
 - [Behavior dataset ledger and templates](data/README.md)
 - [Phase 2 plan issue #1](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/1)
 - [Phase 2 spec issue #2](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/2)
@@ -82,7 +84,7 @@ python3 scripts/agreement.py
 
 ## Phase 2 scope
 
-The agreed labels are Eating, Locomotion, Resting, and Climbing. Phase 2 adapts the brief's still-image classification option to five-second video windows because movement and duration are needed to identify Locomotion and Resting. The initial model will use a compact pretrained video classifier selected after the data and compute audit.
+The model classes are Eating, Locomotion and Resting; Climbing is out of scope ([ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md)). Phase 2 adapts the brief's still-image classification option to five-second video windows because movement and duration are needed to identify Locomotion and Resting. The initial model will use a compact pretrained video classifier selected after the data and compute audit.
 
 Behavior intervals are pre-labeled automatically, not hand-labeled from scratch: Resting and Locomotion come from motion, and a zero-shot model proposes Eating and Climbing for human verification. A small human gold set is the only data used for reported model quality. See [decision 0003](docs/adr/0003-automate-prelabeling-with-human-gold-set.md).
 

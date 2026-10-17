@@ -1,5 +1,7 @@
 # Climbing has no evidence of absence
 
+> **Superseded by [ADR 0007](0007-drop-climbing-from-phase-2-scope.md).** The two candidate intervals below were reviewed and are not climbing, and the instructor confirmed three classes are enough. The text is kept as written to record the reasoning at the time.
+
 No Climbing-labelled source clip was delivered, and [the footage audit](../FOOTAGE-AUDIT.md) found no unambiguous climb in a sampled-frame screen. That is the whole of the evidence. Treat Climbing as an open class that the delivered set happens not to label, not as a class the footage is known to lack. `MODEL_CLASSES` in [`../../scripts/labels.py`](../../scripts/labels.py) stays at three classes until a full interval pass either produces a Climbing interval or the annotation guide rules the candidate intervals out.
 
 ## Why

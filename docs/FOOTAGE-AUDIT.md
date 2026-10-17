@@ -48,10 +48,10 @@ Durations and stream properties below come from `ffprobe` on the extracted files
 | Recording session and room | **Unknown / unavailable** | No session ID or room mapping file is present. Do not infer four-room/four-camera coverage from the project brief. The visible IDs establish two camera labels in these files, not which rooms they cover or whether other footage exists. |
 | Light, camera view, visibility, occlusion | **Not inventoried** | These may be observable at specific timecodes, but no complete, reviewed condition annotations exist. Record them per interval rather than extrapolating from examples. |
 | Behavior examples | **Screening candidates found for three classes; intervals unverified** | In sampled frames, Eating is visible at `Eating/25690518092326646.mp4` (45 s), Locomotion at `Locomotion/25690518091918610.mp4` (8 s), and a resting posture at `Resting/25690519194809256.mp4` (20 s). These are examples to review, not verified time intervals; use the annotation guide before counting them. |
-| Climbing coverage | **No verified example found; true coverage remains unknown** | No Climbing folder label exists. A visual scan sampled frames every five seconds across all 22 clips and every two seconds from all 10 Locomotion-folder clips; no sampled frame showed an unambiguous climb. This is a coverage check, not a full behavior annotation, so it cannot prove climbing is absent. |
+| Climbing coverage | **Out of scope; two candidate intervals reviewed and ruled out** | No Climbing folder label exists. A visual scan sampled frames every five seconds across all 22 clips and every two seconds from all 10 Locomotion-folder clips; no sampled frame showed an unambiguous climb. That scan is a sampled check, not a full annotation. The two candidate intervals raised in [#16](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/16) were reviewed by one person and are not climbing, and the instructor confirmed three classes are enough. See [ADR 0007](adr/0007-drop-climbing-from-phase-2-scope.md). |
 | Additional examples in the explainer project | **Not independent sources** | Its script identifies Eating, Locomotion, and Resting examples as illustrative footage from this supplied set. Do not add them to the source-clip counts without tracing them to original files. |
 
-The current evidence supports three **candidate** classes from folder names, not verified labeled intervals. Climbing is the highest-priority source gap. Review full clips against the annotation guide before counting any example toward a class.
+The current evidence supports three **candidate** classes from folder names, not verified labeled intervals. Climbing is out of scope (see the Climbing row above). Review full clips against the annotation guide before counting any example toward a class.
 
 ## Local compute check
 
@@ -85,4 +85,4 @@ The supplied archive is the whole dataset rather than a sample of a larger one, 
 | Resting | 7 clips, 659 s | 20 | every clip that review verifies |
 | Climbing | 0 clips | 20 | none available |
 
-Report the verified count for each class beside every metric, and state plainly that Climbing has no source clip. Do not present a four-class result. `scripts/split.py` writes the split for the three classes that exist and refuses to write one that leaves a class out of a split.
+Report the verified count for each class beside every metric, and state plainly that Climbing is out of scope: no Climbing clip was supplied and the candidate intervals were reviewed and ruled out ([ADR 0007](adr/0007-drop-climbing-from-phase-2-scope.md)). Do not present a four-class result. `scripts/split.py` writes the split for the three classes that exist and refuses to write one that leaves a class out of a split.

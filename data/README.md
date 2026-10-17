@@ -11,7 +11,7 @@ This directory holds the tracked source clips and the source-clip ledger and CSV
 
 ## Dataset state
 
-The source ledger is an inventory, not a labeled dataset. No behavior intervals, annotator agreement, or adjudications have been entered yet, so `data/annotations.csv` is an empty header and every split in `splits.csv` will produce zero windows until review is done. The footage audit found no verified Climbing interval in the supplied footage, and the supplied archive is the whole dataset, so Climbing has no source clip. Do not treat an empty field as a negative label or treat a folder name as ground truth.
+The source ledger is an inventory, not a labeled dataset. No behavior intervals, annotator agreement, or adjudications have been entered yet, so `data/annotations.csv` is an empty header and every split in `splits.csv` will produce zero windows until review is done. No Climbing clip was supplied, the supplied archive is the whole dataset, and the two candidate Climbing intervals were reviewed and are not climbing, so Climbing is out of scope as a model class ([ADR 0007](../docs/adr/0007-drop-climbing-from-phase-2-scope.md)). Do not treat an empty field as a negative label or treat a folder name as ground truth.
 
 The source ledger has 11 clips from Camera 02 and 11 from Camera 03, with no recording-session IDs, and the two cameras do not carry the same behavior mix: 597 of the 659 seconds of Resting are Camera 03 on 2026-05-19, and every Locomotion clip is on 2026-05-18. That is why `scripts/split.py` splits by clip and records the group straddle on every row instead of holding a camera out.
 

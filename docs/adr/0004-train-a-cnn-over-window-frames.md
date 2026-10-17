@@ -14,5 +14,5 @@ Phase 2 delivers the professor's Task 1 as a per-frame CNN with mean and max poo
 - The model sees 8 frames per five-second window, not all 25 frames per second. Posture, position and approach survive; fast motion detail does not.
 - Pooling cannot represent motion direction on its own. If Locomotion needs that, add frame differences or a temporal convolution as a second input and re-measure.
 - Changing the backbone invalidates every saved checkpoint, because the checkpoint stores the configuration it was trained with.
-- Climbing is not a model class yet. No verified climb exists in the supplied footage, so there is nothing to train or score it on. The class list lives in `scripts/labels.py` and grows there.
+- Climbing is not a model class. No Climbing clip was supplied, so there is nothing to train or score it on; see [ADR 0007](0007-drop-climbing-from-phase-2-scope.md). The class list lives in `scripts/labels.py` and grows there.
 - This supersedes the earlier "compact pretrained video classifier" wording in the Phase 2 plan. Task 2 and Task 3 of the brief were rejected: Task 2 needs YOLO boxes that do not exist here, and pose estimation would fail on this footage for the same reasons the zero-shot stage failed.
