@@ -19,6 +19,8 @@ would drop as an overlapping-annotation conflict. Standard library only.
 Usage:
     python scripts/review.py --port 8001
     python scripts/review.py --blind 25690519194109670 --blind-file gold.txt
+    python scripts/review.py --only-file data/gold-clips.txt --blind-file data/gold-clips.txt
+    python scripts/review.py --redo CLIP_ID      # serve a clip that already has rows again
     python scripts/review.py --counts            # per-clip verified row counts
 """
 
@@ -171,12 +173,31 @@ def verified_counts(out_file: Path) -> dict[str, int]:
     return counts
 
 
-def blind_ids(blind: list[str], blind_file: Path | None) -> set[str]:
-    """Clip ids to hide proposals from, from repeated flags and/or a file."""
-    ids = set(blind)
-    if blind_file:
-        ids.update(line.strip() for line in Path(blind_file).read_text().splitlines() if line.strip())
-    return ids
+def id_set(ids: list[str], id_file: Path | None) -> set[str]:
+    """Clip ids from repeated flags and/or a file with one id per line."""
+    found = set(ids)
+    if id_file:
+        found.update(line.strip() for line in Path(id_file).read_text().splitlines() if line.strip())
+    return found
+
+
+# Clip ids to hide proposals from.
+blind_ids = id_set
+
+
+def restrict_clips(clips: list[Clip], only: set[str]) -> list[Clip]:
+    """Only the listed clips, in ledger order; every clip when the list is empty."""
+    return [clip for clip in clips if clip.clip_id in only] if only else clips
+
+
+def pending_counts(counts: dict[str, int], redo: set[str], saved: set[str]) -> dict[str, int]:
+    """Verified rows as the page should see them.
+
+    A clip marked for redo counts as unverified until it is saved in this run, so
+    the page serves it again even though an earlier pass left rows for it. Saving
+    replaces that annotator's earlier rows (replace_rows), so nothing is duplicated.
+    """
+    return {clip_id: (0 if clip_id in redo and clip_id not in saved else n) for clip_id, n in counts.items()}
 
 
 # --- server ------------------------------------------------------------------
@@ -188,6 +209,8 @@ class Config:
     proposals: dict[str, list[dict]]
     blind: set[str] = field(default_factory=set)
     out_file: Path = Path("data/annotations.csv")
+    redo: set[str] = field(default_factory=set)
+    saved: set[str] = field(default_factory=set)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -212,7 +235,7 @@ class Handler(BaseHTTPRequestHandler):
         return next((clip for clip in self.config.clips if clip.clip_id == clip_id), None)
 
     def _clips_payload(self) -> list[dict]:
-        counts = verified_counts(self.config.out_file)
+        counts = pending_counts(verified_counts(self.config.out_file), self.config.redo, self.config.saved)
         return [
             {"clip_id": c.clip_id, "blind": c.clip_id in self.config.blind, "verified": counts.get(c.clip_id, 0)}
             for c in self.config.clips
@@ -265,6 +288,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": str(exc)}, 400)
             return
         replace_rows(self.config.out_file, clip_id, annotator, rows)
+        self.config.saved.add(clip_id)
         counts = verified_counts(self.config.out_file)
         reviewed = self._reviewed(counts)
         print(f"saved {clip_id}: +{len(rows)} rows, {reviewed}/{len(self.config.clips)} clips reviewed -> {self.config.out_file}")
@@ -390,15 +414,24 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=Path("data/annotations.csv"))
     parser.add_argument("--blind", action="append", default=[], metavar="CLIP_ID")
     parser.add_argument("--blind-file", type=Path)
+    parser.add_argument("--only", action="append", default=[], metavar="CLIP_ID", help="serve only these clips")
+    parser.add_argument("--only-file", type=Path, help="file of clip ids to serve, one per line")
+    parser.add_argument("--redo", action="append", default=[], metavar="CLIP_ID", help="serve this clip again even if it already has rows")
+    parser.add_argument("--redo-file", type=Path, help="file of clip ids to serve again, one per line")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--counts", action="store_true", help="print per-clip verified row counts and exit")
     args = parser.parse_args()
 
     clips = load_clips(args.clips_file, args.raw)
+    known = {clip.clip_id for clip in clips}
     blind = blind_ids(args.blind, args.blind_file)
-    unknown = blind - {clip.clip_id for clip in clips}
-    if unknown:
-        parser.error(f"blind clips not in {args.clips_file}: {sorted(unknown)}")
+    only = id_set(args.only, args.only_file)
+    redo = id_set(args.redo, args.redo_file)
+    for name, ids in (("blind", blind), ("only", only), ("redo", redo)):
+        unknown = ids - known
+        if unknown:
+            parser.error(f"{name} clips not in {args.clips_file}: {sorted(unknown)}")
+    clips = restrict_clips(clips, only)
 
     if args.counts:
         counts = verified_counts(args.out)
@@ -407,7 +440,7 @@ def main() -> int:
         print(f"reviewed {sum(1 for c in clips if counts.get(c.clip_id))}/{len(clips)} clips -> {args.out}")
         return 0
 
-    config = Config(clips=clips, proposals=load_proposals(args.timeline), blind=blind, out_file=args.out)
+    config = Config(clips=clips, proposals=load_proposals(args.timeline), blind=blind, out_file=args.out, redo=redo)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     server.config = config
     print(f"review http://127.0.0.1:{args.port}/  ({len(clips)} clips, {len(blind)} blind) -> {args.out}")
