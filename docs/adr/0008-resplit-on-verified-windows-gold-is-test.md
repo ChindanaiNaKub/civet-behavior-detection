@@ -16,7 +16,7 @@ The split stays by whole clip (ADR 0005), but the assignment is now chosen and c
 | validation | 3 | 10 / 1 / 19 |
 | test (gold) | 8 | 7 / 5 / 6 |
 
-Two clips moved into test to give it Eating and Resting: `25690519193422801` (Eating, 50 s) and `25690519194200758` (Resting, 31 s). Their intervals were first verified against the proposal. Before the test set can be locked, the first annotator labels them again blind (`--redo`), and the second annotator labels all eight blind. The window counts above come from the first, non-blind labels of those two clips and must be re-read after the blind pass; `split.py` re-checks them.
+Two clips moved into test to give it Eating and Resting: `25690519193422801` (Eating, 50 s) and `25690519194200758` (Resting, 31 s). Their intervals were first verified against the proposal. Before the test set can be locked, the first annotator labels them again blind (`--redo`), and the second annotator labels all eight blind. The first annotator's blind pass on those two clips is done, and `split.py` and `windows.py` give the same counts as above on the blind labels. The second annotator's pass is still open.
 
 ## Consequences
 

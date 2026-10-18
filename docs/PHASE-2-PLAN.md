@@ -33,7 +33,7 @@ As of 2026-10-19. A checked box has its artifact in the repository.
 - [x] **Climbing scope decided.** The two candidate intervals were reviewed and are not climbing, so the class list stays at three. See [ADR 0007](adr/0007-drop-climbing-from-phase-2-scope.md) and [#16](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/16).
 - [x] **Human verification of the timeline.** One annotator verified intervals for all 22 clips (62 intervals, `data/annotations.csv`). The first six gold clips were labeled blind.
 - [x] **Split re-chosen on verified windows.** The first assignment left the test split with no Resting window. [ADR 0008](adr/0008-resplit-on-verified-windows-gold-is-test.md) re-chose it and makes the test split the eight-clip gold set (`data/gold-clips.txt`).
-- [ ] **The human gold set.** The first annotator labels two moved clips blind again, and a second person labels all eight blind. `data/agreement.csv` records the result.
+- [ ] **The human gold set.** The first annotator has labeled all eight gold clips blind, including the two that moved into test. A second person labels all eight blind. `data/agreement.csv` records the result.
 - [ ] **Lock the test set.** After both blind passes, `scripts/split.py` must pass on the final labels. A person reviews `data/splits.csv` and fills `test_locked_by`. Do not run `scripts/evaluate.py` before then.
 - [ ] **Train, evaluate, and report.** Run the pipeline on the verified windows and write the report from the numbers it produces.
 
