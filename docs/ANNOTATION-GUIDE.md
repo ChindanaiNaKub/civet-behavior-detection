@@ -44,6 +44,15 @@ Climbing is out of scope as a model class ([ADR 0007](adr/0007-drop-climbing-fro
 
 Climbing stays a valid label. If you see a real climb, record it as Climbing and add a note rather than forcing it into Locomotion. It is not a model class, so any window it touches is excluded from training and evaluation. The pre-labeler can still propose Climbing; its proposals on the supplied clips were all false positives, so reject them unless the video shows a climb.
 
+## Gold set
+
+The gold set is the eight whole clips in [`data/gold-clips.txt`](../data/gold-clips.txt), which are also the test split ([ADR 0008](adr/0008-resplit-on-verified-windows-gold-is-test.md)). Reported metrics come only from labels made without the machine proposal.
+
+- Label every interval from scratch. The review page hides all proposals for these clips when started with `--blind-file data/gold-clips.txt`.
+- Two different people label the same eight clips, each into their own file, and neither opens the other's file, `data/annotations.csv` or `outputs/prelabel/` first. The commands are in the README.
+- Apply the rules above exactly as written. If a clip is hard to read, such as a Resting clip where a plant hides the animal, label what is visible and use Uncertain with a reason for the rest. Do not label from the folder name.
+- Compare with `scripts/agreement.py` before discussing any disagreement, then record the resolution in `data/agreement.csv`.
+
 ## Machine pre-labels
 
 Human effort is verification, not first-pass labeling. The pipeline proposes behavior intervals, deriving Resting from sustained low motion (at least five seconds) and Locomotion from location change, and proposing Eating and Climbing with a zero-shot model. For each proposed interval, the reviewer accepts it, edits its boundaries or label, or marks it Transition or Uncertain; label from scratch only where the pipeline proposes nothing or the proposal is wrong.
