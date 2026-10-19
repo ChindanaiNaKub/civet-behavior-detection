@@ -1,6 +1,8 @@
 """Portable launcher and HTTP media contracts; no GPU or third-party runtime."""
 
 import io
+import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -17,7 +19,7 @@ def packet(tmp_path):
     (root / "scripts").mkdir(parents=True)
     (root / "data/raw").mkdir(parents=True)
     source = Path(review.__file__).parent
-    for name in ("review.py", "review_page.html", "labels.py"):
+    for name in ("review.py", "review_page.html", "review_i18n.json", "labels.py"):
         shutil.copyfile(source / name, root / "scripts" / name)
     shutil.copyfile(source / "review_launcher.py", root / "start_review.py")
     (root / "data/clips.csv").write_text("clip_id,relative_path,duration_s\nc,c.mp4,8\n", encoding="utf-8")
@@ -109,3 +111,21 @@ def test_busy_preferred_port_falls_back_without_stopping_other_process(tmp_path,
     assert calls == [("127.0.0.1", 8000), ("127.0.0.1", 0)]
     assert closed == [True]
     assert "http://127.0.0.1:43210/" in capsys.readouterr().out
+
+
+def test_both_languages_cover_ui_and_preserve_format_parameters():
+    source = Path(review.__file__).parent
+    translations = json.loads((source / "review_i18n.json").read_text(encoding="utf-8"))
+    assert translations.keys() == {"en", "th"}
+    assert translations["en"].keys() == translations["th"].keys()
+    for key, english in translations["en"].items():
+        assert english.strip() and translations["th"][key].strip()
+        assert set(re.findall(r"\{(\w+)\}", english)) == set(re.findall(r"\{(\w+)\}", translations["th"][key]))
+    html = (source / "review_page.html").read_text(encoding="utf-8")
+    referenced = set(re.findall(r'data-i18n(?:-placeholder|-aria)?="([^"]+)"', html))
+    referenced.update(re.findall(r"\b(?:message|saved|setStep|t)\('([^']+)'", html))
+    assert referenced <= translations["en"].keys()
+    assert set(review.BEHAVIORS) <= translations["en"].keys()
+    assert '<html lang="en">' in html
+    assert "let language='en'" in html
+    assert "__TRANSLATIONS__" not in review.PAGE

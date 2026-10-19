@@ -48,8 +48,10 @@ The page keeps a local browser draft scoped to the output file, annotator and
 clip, and warns before leaving unsaved work. Browser drafts are not CSV submissions.
 Use the same browser, origin/port and reviewer name to restore them. Saved CSV
 records remain available even when changing browsers or operating systems.
-To load upgraded code in an existing packet, copy only `scripts/review.py` and
-`scripts/review_page.html` and update the launcher; preserve its entire `data/`
+The reviewer opens in English, with a live English/Thai switch. Display language
+does not change the stored behavior codes, interval times or reviewer-entered text.
+To load upgraded code in an existing packet, copy `scripts/review.py`,
+`scripts/review_page.html`, `scripts/review_i18n.json` and update the launcher; preserve its entire `data/`
 directory. Stop and restart the server after saving current work, then refresh
 the page. Do not regenerate or replace an in-progress review folder.
 
