@@ -4,7 +4,7 @@ Phase 2 project for building a checkable short-clip behavior-classification base
 
 ## Current status
 
-The pipeline is built and runs end to end, and one annotator has verified intervals for all 22 clips (62 intervals in `data/annotations.csv`). What is still missing is the gold set: eight clips (`data/gold-clips.txt`) labeled blind by two people, then the test lock. No model has been trained on the verified labels and no reported number exists yet. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
+The pipeline is built and runs end to end, and one annotator has verified intervals for all 22 clips. A baseline checkpoint has been trained on the train split and shown on a validation clip with a validation-selected threshold; see [Baseline training and clip demo](docs/BASELINE-DEMO.md). What is still missing is the gold reconciliation and the test lock, so there is no held-out score yet. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
 
 The model classes are Eating, Locomotion and Resting. The brief calls the third class Walking, and the repository calls it Locomotion because the Phase 1 glossary widened it to any movement that changes location. Climbing is out of scope: no Climbing clip was supplied, the two candidate intervals were reviewed and are not climbing, and the instructor confirmed three classes are enough. It stays a valid annotation label that never becomes a model class, and no Climbing work is planned. See [ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md) for the model, [ADR 0005](docs/adr/0005-split-by-clip-not-by-recording-group.md) for the split rule and [ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md) for Climbing.
 
@@ -12,6 +12,7 @@ The model classes are Eating, Locomotion and Resting. The brief calls the third 
 
 - [คู่มือหน้าตรวจสำหรับ Windows / Fedora Linux](docs/REVIEWER-QUICKSTART.md)
 - [Gold review handoff: second reviewer, reconciliation and test lock](docs/GOLD-REVIEW-HANDOFF.md)
+- [Baseline training and clip demo](docs/BASELINE-DEMO.md)
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
 - [Footage and compute audit](docs/FOOTAGE-AUDIT.md)
 - [Behavior interval annotation guide](docs/ANNOTATION-GUIDE.md)
@@ -61,18 +62,26 @@ python3 scripts/lighting.py
 
 4. Review `data/splits.csv` and record who locked the test set in `test_locked_by`. Do this before the next step if the numbers are to be reported, because the test set must be fixed before it is read.
 
-5. Train, then score the locked test set once. The threshold is chosen on the validation windows, and the test windows are read once, after the threshold is fixed.
+5. Train, then score the locked test set once. The threshold is chosen on the validation windows, and the test videos are decoded and scored once, after the threshold is fixed.
 
 ```
 python3 scripts/train.py
 python3 scripts/evaluate.py
 ```
 
+Before the test lock, `python3 scripts/evaluate.py --validation-only` writes
+`outputs/validation.md` and `outputs/threshold.json`, and stops before decoding
+any test window. Use that threshold for the demo. The full evaluation stays gated
+on step 4.
+
 6. Show one clip's predicted timeline against its own timecodes. The threshold comes from step 5.
 
 ```
-python3 scripts/demo.py data/raw/Resting/25690519194809256.mp4
+python3 scripts/demo.py data/raw/Eating/25690519193547292.mp4
 ```
+
+Before the lock, pass `--evaluation outputs/threshold.json` from the
+validation-only run.
 
 7. Check the pipeline logic. No GPU, no video and no model download.
 
@@ -113,7 +122,7 @@ python3 scripts/agreement.py
 
 ## Phase 2 scope
 
-The model classes are Eating, Locomotion and Resting; Climbing is out of scope ([ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md)). Phase 2 adapts the brief's still-image classification option to five-second video windows because movement and duration are needed to identify Locomotion and Resting. The initial model will use a compact pretrained video classifier selected after the data and compute audit.
+The model classes are Eating, Locomotion and Resting; Climbing is out of scope ([ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md)). Phase 2 adapts the brief's still-image classification option to five-second video windows because movement and duration are needed to identify Locomotion and Resting. The model is a frame CNN over an ImageNet-pretrained backbone, chosen after the data and compute audit ([ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md)).
 
 Behavior intervals are pre-labeled automatically, not hand-labeled from scratch: Resting and Locomotion come from motion, and a zero-shot model proposes Eating and Climbing for human verification. A small human gold set is the only data used for reported model quality. See [decision 0003](docs/adr/0003-automate-prelabeling-with-human-gold-set.md).
 
