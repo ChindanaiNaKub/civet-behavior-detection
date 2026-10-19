@@ -7,6 +7,9 @@ on PR #19 and PR #20; merge those in order before merging this follow-up.
 
 ## Give the second reviewer a separate folder
 
+Reviewer-facing instructions, including Fedora/Linux startup, guided time marking,
+browser drafts and codec troubleshooting: [Reviewer quickstart](REVIEWER-QUICKSTART.md).
+
 From the repository root, run:
 
 ```powershell
@@ -41,7 +44,10 @@ first-pass `data/annotations.csv` when the packet is under `outputs/`. Saves use
 an atomic replacement and keep the previous second-pass file as `.csv.bak`.
 Invalid or overlapping intervals are rejected before writing. A browser cancelling
 a video request while seeking or closing the page no longer produces a traceback.
-The page warns before leaving unsaved work; unsaved intervals are not a saved draft.
+The page keeps a local browser draft scoped to the output file, annotator and
+clip, and warns before leaving unsaved work. Browser drafts are not CSV submissions.
+Use the same browser, origin/port and reviewer name to restore them. Saved CSV
+records remain available even when changing browsers or operating systems.
 To load upgraded code in an existing packet, copy only `scripts/review.py` and
 `scripts/review_page.html` and update the launcher; preserve its entire `data/`
 directory. Stop and restart the server after saving current work, then refresh

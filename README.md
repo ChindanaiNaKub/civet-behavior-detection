@@ -10,6 +10,7 @@ The model classes are Eating, Locomotion and Resting. The brief calls the third 
 
 ## Start here
 
+- [คู่มือหน้าตรวจสำหรับ Windows / Fedora Linux](docs/REVIEWER-QUICKSTART.md)
 - [Gold review handoff: second reviewer, reconciliation and test lock](docs/GOLD-REVIEW-HANDOFF.md)
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
 - [Footage and compute audit](docs/FOOTAGE-AUDIT.md)
