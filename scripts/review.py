@@ -28,12 +28,14 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
 import shutil
 import tempfile
 import threading
+import webbrowser
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -165,7 +167,7 @@ def clip_payload(clip: Clip, proposals: list[dict], blind: bool) -> dict:
 
 def load_clips(clips_file: Path, raw_dir: Path) -> list[Clip]:
     """Clip list from data/source-clips.csv, with paths under the raw root."""
-    with Path(clips_file).open(newline="") as handle:
+    with Path(clips_file).open(newline="", encoding="utf-8-sig") as handle:
         return [
             Clip(row["clip_id"], Path(raw_dir) / row["relative_path"], float(row["duration_s"]))
             for row in csv.DictReader(handle)
@@ -197,7 +199,7 @@ def verified_counts(out_file: Path) -> dict[str, int]:
     path = Path(out_file)
     if not path.exists():
         return counts
-    with path.open(newline="") as handle:
+    with path.open(newline="", encoding="utf-8-sig") as handle:
         for row in csv.DictReader(handle):
             counts[row["clip_id"]] = counts.get(row["clip_id"], 0) + 1
     return counts
@@ -207,7 +209,7 @@ def id_set(ids: list[str], id_file: Path | None) -> set[str]:
     """Clip ids from repeated flags and/or a file with one id per line."""
     found = set(ids)
     if id_file:
-        found.update(line.strip() for line in Path(id_file).read_text().splitlines() if line.strip())
+        found.update(line.strip() for line in Path(id_file).read_text(encoding="utf-8-sig").splitlines() if line.strip())
     return found
 
 
@@ -287,6 +289,10 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         elif route.path == "/api/clips":
             self._json(self._clips_payload())
+        elif route.path == "/api/session":
+            # Scope browser drafts to this output file, never to another pass.
+            identity = str(self.config.out_file.resolve()).encode("utf-8")
+            self._json({"review_id": hashlib.sha256(identity).hexdigest(), "output_name": self.config.out_file.name})
         elif route.path == "/api/clip":
             clip = self._clip(args.get("id", [""])[0])
             if clip is None:
@@ -343,11 +349,30 @@ class Handler(BaseHTTPRequestHandler):
         size = path.stat().st_size
         start, end, status = 0, size - 1, 200
         header = self.headers.get("Range", "")
-        if header.startswith("bytes="):
-            first, _, last = header[len("bytes="):].split(",")[0].partition("-")
-            start = int(first) if first else 0
-            end = min(int(last), size - 1) if last else size - 1
-            status = 206
+        if header:
+            try:
+                if not header.startswith("bytes=") or "," in header:
+                    raise ValueError("unsupported range")
+                first, separator, last = header[len("bytes="):].partition("-")
+                if not separator:
+                    raise ValueError("missing range separator")
+                if first:
+                    start = int(first)
+                    end = min(int(last), size - 1) if last else size - 1
+                else:
+                    suffix = int(last)
+                    if suffix <= 0:
+                        raise ValueError("empty suffix")
+                    start, end = max(0, size - suffix), size - 1
+                if start < 0 or start >= size or end < start:
+                    raise ValueError("range outside video")
+                status = 206
+            except ValueError:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
         length = end - start + 1
         self.send_response(status)
         self.send_header("Content-Type", "video/mp4")
@@ -382,7 +407,7 @@ PAGE = PAGE.replace("__BEHAVIORS__", json.dumps(list(BEHAVIORS)))
 # --- driver ------------------------------------------------------------------
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--clips-file", type=Path, default=Path("data/source-clips.csv"))
     parser.add_argument("--raw", type=Path, default=Path("data/raw"))
@@ -396,8 +421,12 @@ def main() -> int:
     parser.add_argument("--redo", action="append", default=[], metavar="CLIP_ID", help="serve this clip again even if it already has rows")
     parser.add_argument("--redo-file", type=Path, help="file of clip ids to serve again, one per line")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--auto-port", action="store_true", help="choose a free port when the preferred port is busy")
+    parser.add_argument("--open-browser", action="store_true", help="open the system default browser after startup")
     parser.add_argument("--counts", action="store_true", help="print per-clip verified row counts and exit")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    if not 0 <= args.port <= 65535:
+        parser.error("port must be between 0 and 65535")
     try:
         check_output(args.out, args.protect_file)
     except ValueError as exc:
@@ -422,13 +451,29 @@ def main() -> int:
         return 0
 
     config = Config(clips=clips, proposals=load_proposals(args.timeline), blind=blind, out_file=args.out, redo=redo, protected=args.protect_file)
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    except OSError:
+        if not args.auto_port:
+            parser.error(f"cannot listen on port {args.port}; try --port 0 for a free port")
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     server.config = config
-    print(f"review http://127.0.0.1:{args.port}/  ({len(clips)} clips, {len(blind)} blind) -> {args.out}")
+    url = f"http://127.0.0.1:{server.server_port}/"
+    print(f"Review: {url}\n{len(clips)} clips, {len(blind)} blind. Save to: {args.out}\nKeep this terminal open. Stop with Ctrl+C.", flush=True)
+    if args.open_browser:
+        def open_browser():
+            try:
+                if not webbrowser.open(url):
+                    print(f"Open this URL manually in a browser: {url}", flush=True)
+            except webbrowser.Error:
+                print(f"Open this URL manually in a browser: {url}", flush=True)
+        threading.Thread(target=open_browser, daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nstopped")
+    finally:
+        server.server_close()
     return 0
 
 

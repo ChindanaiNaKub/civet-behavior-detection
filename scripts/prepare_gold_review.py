@@ -40,6 +40,7 @@ def prepare(root: Path, out: Path) -> int:
         f"ANNOTATION_FIELDS = {tuple(review.CSV_FIELDS)!r}\n", encoding="utf-8",
     )
     shutil.copyfile(root / "GLOSSARY.md", out / "GLOSSARY.md")
+    shutil.copyfile(root / "docs/REVIEWER-QUICKSTART.md", out / "USER-GUIDE.md")
     # Do not copy the full annotation guide: it includes conclusions about clips.
     with (out / "data/clips.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["clip_id", "relative_path", "duration_s"], lineterminator="\n")
@@ -49,20 +50,10 @@ def prepare(root: Path, out: Path) -> int:
             shutil.copyfile(clip.path, out / "data/raw" / filename)
             writer.writerow({"clip_id": clip.clip_id, "relative_path": filename, "duration_s": clip.duration_s})
     (out / "data/gold-clips.txt").write_text("\n".join(sorted(gold)) + "\n", encoding="utf-8")
-    (out / "start_review.py").write_text(
-        '"""Start blind review from any working directory; Python standard library only."""\n'
-        "import os\nfrom pathlib import Path\nimport runpy\nimport sys\n\n"
-        "root = Path(__file__).resolve().parent\nos.chdir(root)\n"
-        "sys.path.insert(0, str(root / 'scripts'))\n"
-        "sys.argv = ['review.py', '--clips-file', 'data/clips.csv', "
-        "'--only-file', 'data/gold-clips.txt', '--blind-file', 'data/gold-clips.txt', "
-        "'--out', 'data/annotations-second.csv', "
-        "'--protect-file', str(root.parents[1] / 'data/annotations.csv')]\n"
-        "runpy.run_path(str(root / 'scripts/review.py'), run_name='__main__')\n",
-        encoding="utf-8",
-    )
+    shutil.copyfile(root / "scripts/review_launcher.py", out / "start_review.py")
     (out / "README.md").write_text(
         "# Independent blind behavior review\n\n"
+        "คู่มือภาษาไทย: [USER-GUIDE.md](USER-GUIDE.md).\n\n"
         "Use Python 3.10 or later. No packages need installing. Keep this folder private; "
         "it includes project footage. Do not publish or upload it outside team-approved storage.\n\n"
         "1. Work independently. Do not open the project's first-pass annotations, "
@@ -72,7 +63,8 @@ def prepare(root: Path, out: Path) -> int:
         "visible behavior when actions overlap, or Uncertain with a reason. Mark changes "
         "between behaviors as Transition. For Resting, require five continuous inactive "
         "seconds and start the interval at inactivity onset once confirmed.\n"
-        "3. Run `python start_review.py`, then open http://127.0.0.1:8000/. "
+        "3. Windows: `python start_review.py`. Fedora/Linux: `python3 start_review.py`. "
+        "The default browser opens automatically; otherwise use the URL printed in the terminal. "
         "Enter your own name consistently for all clips. Watch each whole clip. "
         "Click Start after entering your name. Use Add record, the behavior selector, "
         "the start/end time fields, and Save clip. Keyboard shortcuts are optional. "
@@ -83,6 +75,10 @@ def prepare(root: Path, out: Path) -> int:
         "5. Return only data/annotations-second.csv to the coordinator, with confirmation "
         "that you worked without seeing existing answers. Do not discuss labels until "
         "both independent passes are submitted.\n\n"
+        "Options: `--no-browser` for a terminal-only session, `--port 0` for a free port, "
+        "and `--check` to check packet files without writing records. Keep the terminal "
+        "open while reviewing; stop with Ctrl+C. On Fedora/Firefox, MP4 playback may "
+        "need system codecs; see https://support.mozilla.org/en-US/kb/audio-and-video-firefox.\n\n"
         "Saving records your intervals; it does not certify that review or reconciliation "
         "is complete. The coordinator checks coverage, compares both passes, reconciles "
         "differences with the reviewers, and arranges a human test-set lock afterward.\n",

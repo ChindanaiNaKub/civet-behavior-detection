@@ -16,13 +16,15 @@ def test_packet_contains_neutral_metadata_and_no_answers(tmp_path):
     root = tmp_path / "repo"
     (root / "data/raw/Eating").mkdir(parents=True)
     (root / "scripts").mkdir()
+    (root / "docs").mkdir()
+    (root / "docs/REVIEWER-QUICKSTART.md").write_text("# Reviewer guide\n")
     (root / "data/gold-clips.txt").write_text("c\n")
     (root / "data/raw/Eating/c.mp4").write_bytes(b"private video")
     (root / "data/source-clips.csv").write_text(
         "clip_id,relative_path,duration_s,folder_label_weak\nc,Eating/c.mp4,10,Eating\n"
     )
     (root / "data/annotations.csv").write_text("FIRST PASS ANSWERS")
-    for name in ("review.py", "labels.py", "review_page.html"):
+    for name in ("review.py", "labels.py", "review_page.html", "review_launcher.py"):
         (root / "scripts" / name).write_text("# review tool\n")
     (root / "GLOSSARY.md").write_text("# Definitions\n")
     out = tmp_path / "packet"
@@ -30,7 +32,7 @@ def test_packet_contains_neutral_metadata_and_no_answers(tmp_path):
     files = {p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file()}
     assert files == {
         "scripts/review.py", "scripts/review_page.html", "scripts/labels.py", "GLOSSARY.md", "README.md",
-        "data/clips.csv", "data/gold-clips.txt", "data/raw/c.mp4", "start_review.py",
+        "data/clips.csv", "data/gold-clips.txt", "data/raw/c.mp4", "start_review.py", "USER-GUIDE.md",
     }
     assert "Eating" not in (out / "data/clips.csv").read_text()
     assert (out / "data/raw/c.mp4").read_bytes() == b"private video"
