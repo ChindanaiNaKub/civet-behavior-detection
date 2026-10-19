@@ -9,9 +9,12 @@ resting and test on 597 s, so it would measure that mismatch rather than the
 model. Splitting by clip instead means a recording group can appear on both sides
 of the split, which the ledger records on every row.
 
-Every split holds all three model classes, and the class is stratified by runs of
-footage rather than by clip count, because a clip is between 8 and 220 seconds.
-Climbing is absent because no verified climb exists in this footage.
+Every split must hold all three model classes. The first assignment was stratified
+on the weak folder names, before any interval was verified, and left the test split
+with no Resting window and one Eating window (ADR 0008). The assignment below is
+checked against the windows the verified intervals actually produce, so a split
+that looks complete by folder name but is empty of a class in practice is refused.
+Climbing is not a model class (ADR 0007).
 
 Usage:
     python3 scripts/split.py            # rewrite data/splits.csv
@@ -25,41 +28,42 @@ from collections import Counter
 from pathlib import Path
 
 import labels
+import windows as W
 
-# Chosen so every split holds Eating, Locomotion and Resting, and so the quiet
-# class does not sit entirely on one side. See the module docstring for why this
-# is by clip and not by camera.
+# Test is the gold set: whole clips labelled by a person without the machine
+# proposal, twice (data/gold-clips.txt). Validation and train are verified against
+# the proposal. See ADR 0008 for why these clips and not the first assignment.
 ASSIGNMENT = {
     "train": [
-        # Eating, 158 s
+        # Eating
         "25690518092326646",
         "25690518092408866",
-        "25690519193547292",
-        # Locomotion, 87 s
+        # Locomotion
         "25690518091047366",
         "25690518091210873",
         "25690518091711167",
         "25690518091847591",
         "25690518091948946",
         "25690520153014458",
-        # Resting, 565 s
+        # Resting
         "25690519194109670",
         "25690519194418953",
         "25690519194809256",
-        "25690519195143424",
     ],
     "validation": [
-        "25690519193422801",  # Eating, 50 s
+        "25690519193547292",  # Eating, 69 s
         "25690518091030781",  # Locomotion, 10 s
-        "25690519194200758",  # Resting, 31 s
+        "25690519195143424",  # Resting, 122 s
     ],
     "test": [
         "25690519193808204",  # Eating, 46 s
+        "25690519193422801",  # Eating, 50 s
         "25690518090944462",  # Locomotion, 11 s
         "25690518091012230",  # Locomotion, 8 s
         "25690518091918610",  # Locomotion, 22 s
-        "25690520152850102",  # Resting, 31 s
-        "25690520153258104",  # Resting, 31 s
+        "25690520152850102",  # Resting, 31 s, animal mostly hidden
+        "25690520153258104",  # Resting, 31 s, animal mostly hidden
+        "25690519194200758",  # Resting, 31 s
     ],
 }
 
@@ -91,14 +95,40 @@ def check(clips: list[dict]) -> None:
             raise SystemExit(f"{split} has no clip for {gap}; group-aware or class-aware split needed")
 
 
+def window_counts(intervals: list[W.Interval], durations: dict[str, float], assignment: dict[str, list[str]]) -> Counter:
+    """Windows per (split, class) that the verified intervals produce under an assignment."""
+    splits = {clip_id: split for split, clip_ids in assignment.items() for clip_id in clip_ids}
+    built, _ = W.build(intervals, durations, splits)
+    return Counter((w.split, w.behavior) for w in built)
+
+
+def verified_gaps(counts: Counter) -> dict[str, list[str]]:
+    """The model classes each split has no window for, from the verified intervals."""
+    return {
+        split: [c for c in labels.MODEL_CLASSES if counts[(split, c)] == 0]
+        for split in labels.SPLITS
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--source-clips", type=Path, default=Path("data/source-clips.csv"))
+    parser.add_argument("--annotations", type=Path, default=Path("data/annotations.csv"))
     parser.add_argument("--out", type=Path, default=Path("data/splits.csv"))
     args = parser.parse_args()
 
     clips = read_ledger(args.source_clips)
     check(clips)
+
+    intervals = W.read_intervals(args.annotations) if args.annotations.exists() else []
+    counts: Counter = Counter()
+    if intervals:
+        counts = window_counts(intervals, W.read_durations(args.source_clips), ASSIGNMENT)
+        gaps = {split: gap for split, gap in verified_gaps(counts).items() if gap}
+        if gaps:
+            raise SystemExit(f"no verified window for {gaps}; change the assignment or record the limitation (ADR 0005)")
+    else:
+        print(f"warning: no verified intervals in {args.annotations}; class coverage was checked on folder names only")
 
     by_clip = {row["clip_id"]: row for row in clips}
     elsewhere = {clip_id: sorted(s for s, ids in ASSIGNMENT.items() if s != split and clip_id in ids) for split, ids in ASSIGNMENT.items() for clip_id in ids}
@@ -109,7 +139,7 @@ def main() -> int:
             clip = by_clip[clip_id]
             group = f"{clip['camera_id_overlay']} {clip['capture_datetime_overlay'].split()[0]}"
             straddles = elsewhere[clip_id]
-            reason = "class-stratified clip split, not a recording-group split"
+            reason = "clip split chosen on verified windows, not a recording-group split"
             if straddles:
                 reason += f"; {group} also appears in {' and '.join(straddles)}"
             else:
@@ -136,12 +166,10 @@ def main() -> int:
     print(f"{len(rows)} clips -> {args.out}")
     for split in labels.SPLITS:
         ids = ASSIGNMENT[split]
-        per_class = Counter(by_clip[c]["folder_label_weak"] for c in ids)
-        seconds = {c: sum(durations[i] for i in ids if by_clip[i]["folder_label_weak"] == c) for c in labels.MODEL_CLASSES}
-        print(
-            f"  {split:<11} {len(ids):>2} clips {sum(durations[i] for i in ids):>7.1f} s  "
-            + " ".join(f"{c}={per_class[c]}/{seconds[c]:.0f}s" for c in labels.MODEL_CLASSES)
-        )
+        line = f"  {split:<11} {len(ids):>2} clips {sum(durations[i] for i in ids):>7.1f} s"
+        if intervals:
+            line += "  windows " + " ".join(f"{c}={counts[(split, c)]}" for c in labels.MODEL_CLASSES)
+        print(line)
     print("\ntest_locked_by is left empty on purpose: lock the test set after reviewing this file.")
     return 0
 

@@ -151,3 +151,27 @@ def test_blind_ids_merges_flag_and_file(tmp_path):
     blind_file = tmp_path / "blind.txt"
     blind_file.write_text("clip-b\n\n clip-c \n")
     assert R.blind_ids(["clip-a", "clip-b"], blind_file) == {"clip-a", "clip-b", "clip-c"}
+
+
+def _clip(clip_id):
+    return R.Clip(clip_id, Path(f"{clip_id}.mp4"), 10.0)
+
+
+def test_id_set_is_what_blind_ids_uses(tmp_path):
+    id_file = tmp_path / "ids.txt"
+    id_file.write_text("clip-b\n clip-c \n")
+    assert R.id_set(["clip-a"], id_file) == {"clip-a", "clip-b", "clip-c"}
+    assert R.id_set([], None) == set()
+
+
+def test_restrict_clips_keeps_ledger_order_and_an_empty_list_keeps_everything():
+    clips = [_clip("a"), _clip("b"), _clip("c")]
+    assert [c.clip_id for c in R.restrict_clips(clips, {"c", "a"})] == ["a", "c"]
+    assert R.restrict_clips(clips, set()) == clips
+
+
+def test_a_redo_clip_counts_as_unverified_until_saved_in_this_run():
+    counts = {"a": 3, "b": 2}
+    assert R.pending_counts(counts, {"a"}, set()) == {"a": 0, "b": 2}
+    assert R.pending_counts(counts, {"a"}, {"a"}) == {"a": 3, "b": 2}
+    assert R.pending_counts(counts, set(), set()) == counts

@@ -1,5 +1,7 @@
 # Split by clip, not by recording group
 
+> **Assignment superseded by [ADR 0008](0008-resplit-on-verified-windows-gold-is-test.md).** The by-clip rule stands. The clip assignment below was stratified on folder names and left the test split with no Resting window once the intervals were verified, so ADR 0008 re-chose it on the verified windows.
+
 Train, validation and test are split by whole source clip, stratified by class, so every split holds Eating, Locomotion and Resting. The `(camera, date)` recording group is recorded on every row of [`../../data/splits.csv`](../../data/splits.csv) but may appear on both sides of the split. [`../../scripts/split.py`](../../scripts/split.py) generates the ledger, so changing the assignment is one edit there.
 
 ## Why

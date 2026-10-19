@@ -4,7 +4,7 @@ Phase 2 project for building a checkable short-clip behavior-classification base
 
 ## Current status
 
-The pipeline is built and runs end to end. What is missing is the human step: `data/annotations.csv` is still an empty header, so no verified window exists yet and no reported number has been produced. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
+The pipeline is built and runs end to end, and one annotator has verified intervals for all 22 clips (62 intervals in `data/annotations.csv`). What is still missing is the gold set: eight clips (`data/gold-clips.txt`) labeled blind by two people, then the test lock. No model has been trained on the verified labels and no reported number exists yet. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
 
 The model classes are Eating, Locomotion and Resting. The brief calls the third class Walking, and the repository calls it Locomotion because the Phase 1 glossary widened it to any movement that changes location. Climbing is out of scope: no Climbing clip was supplied, the two candidate intervals were reviewed and are not climbing, and the instructor confirmed three classes are enough. It stays a valid annotation label that never becomes a model class, and no Climbing work is planned. See [ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md) for the model, [ADR 0005](docs/adr/0005-split-by-clip-not-by-recording-group.md) for the split rule and [ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md) for Climbing.
 
@@ -22,6 +22,7 @@ The model classes are Eating, Locomotion and Resting. The brief calls the third 
 - [Decision: split by clip, not by recording group](docs/adr/0005-split-by-clip-not-by-recording-group.md)
 - [Decision: Climbing has no evidence of absence (superseded)](docs/adr/0006-climbing-has-no-evidence-of-absence.md)
 - [Decision: drop Climbing from Phase 2 scope](docs/adr/0007-drop-climbing-from-phase-2-scope.md)
+- [Decision: re-split on verified windows, gold set is the test split](docs/adr/0008-resplit-on-verified-windows-gold-is-test.md)
 - [Behavior dataset ledger and templates](data/README.md)
 - [Phase 2 plan issue #1](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/1)
 - [Phase 2 spec issue #2](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/2)
@@ -30,7 +31,7 @@ The pre-labeler for [#9: Auto pre-label behavior timelines (zero-shot)](https://
 
 ## Run the pipeline
 
-Install the pinned versions, then run these from the repository root. Steps 2 and 4 need a person.
+Install the pinned versions, then run these from the repository root. Steps 2, 4 and the gold-set passes need a person.
 
 ```
 python3 -m pip install -r requirements.txt
@@ -48,11 +49,12 @@ python3 scripts/prelabel.py
 python3 scripts/review.py
 ```
 
-3. Write the split ledger and the windows. `scripts/split.py` assigns every clip to train, validation or test and refuses to write a split that leaves a class out.
+3. Write the split ledger and the windows. `scripts/split.py` assigns every clip to train, validation or test and refuses to write a split that leaves a class with no verified window. `scripts/lighting.py` fills the observed lighting, visibility and occlusion in `data/annotations.csv`; re-run it after saving a clip in the review page.
 
 ```
 python3 scripts/split.py
 python3 scripts/windows.py
+python3 scripts/lighting.py
 ```
 
 4. Review `data/splits.csv` and record who locked the test set in `test_locked_by`. Do this before the next step if the numbers are to be reported, because the test set must be fixed before it is read.
@@ -76,7 +78,21 @@ python3 scripts/demo.py data/raw/Resting/25690519194809256.mp4
 python3 -m pytest scripts
 ```
 
-For the human gold set, run step 2 a second time with `--out data/annotations-second.csv --blind <clip_id>` for each gold clip, then compare the two independent passes.
+The gold set is the eight clips in `data/gold-clips.txt`, which are also the test split (ADR 0008). Two different people label them blind, each without opening the other's file, `data/annotations.csv` or `outputs/prelabel/`. `review.py` needs only the Python standard library.
+
+First annotator, who also redoes the two clips that moved into test (`--redo`) so the page serves them again:
+
+```
+python3 scripts/review.py --only-file data/gold-clips.txt --blind-file data/gold-clips.txt --redo 25690519193422801 --redo 25690519194200758
+```
+
+Second annotator, into their own file:
+
+```
+python3 scripts/review.py --only-file data/gold-clips.txt --blind-file data/gold-clips.txt --out data/annotations-second.csv
+```
+
+Then compare the two independent passes and fill the reconciliation columns in `data/agreement.csv`.
 
 ```
 python3 scripts/agreement.py
@@ -102,7 +118,9 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 - `scripts/prelabel.py` — behavior pre-labeler: Resting from sustained low motion, Locomotion from location change, Eating/Climbing proposed by zero-shot X-CLIP; writes a per-interval timeline CSV for review. Logic checks in `scripts/test_prelabel.py`.
 - `scripts/review.py` — local review page: plays each clip with its proposed intervals and writes verified intervals to `data/annotations.csv`. Supports blind clips for the gold set.
 - `scripts/agreement.py` — compares two independent label passes on the shared sample and writes `data/agreement.csv`.
-- `scripts/split.py` — assigns every clip to train, validation or test and writes `data/splits.csv`.
+- `scripts/split.py` — assigns every clip to train, validation or test, checks each split against the verified windows, and writes `data/splits.csv`.
+- `scripts/lighting.py` — fills lighting, visibility and occlusion in `data/annotations.csv` from the footage and the annotator's own reasons.
+- `data/gold-clips.txt` — the eight gold clips, one id per line, also the test split.
 - `scripts/windows.py` — builds exactly five-second labeled windows from the verified intervals, keeping only windows one verified model-class interval covers completely.
 - `scripts/frames.py` — decodes the frames of a window.
 - `scripts/model.py` — the frame CNN and its checkpoint format.

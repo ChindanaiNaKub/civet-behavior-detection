@@ -24,19 +24,20 @@ See the [footage and compute audit](FOOTAGE-AUDIT.md) for the source inventory, 
 
 ## Where this plan stands
 
-As of 2026-10-17. A checked box has its artifact in the repository.
+As of 2026-10-19. A checked box has its artifact in the repository.
 
 - [x] **Audit and protocol.** [Footage audit](FOOTAGE-AUDIT.md) and [annotation guide](ANNOTATION-GUIDE.md) are complete. Metadata gaps are explicit: no session IDs, no room mapping, and camera and class are confounded.
 - [x] **Pre-labeler and its smoke test.** `scripts/prelabel.py` proposes a timeline for all 22 clips in 2 min 41 s. Resting is reliable, Locomotion is a weak hint, and Eating and Climbing come out empty. See [the smoke test](PRELABEL-SMOKE-TEST.md).
 - [x] **Pipeline for #5 and #6.** `scripts/windows.py` builds five-second windows from verified intervals, `scripts/split.py` writes the split ledger, `scripts/train.py` trains the frame CNN, `scripts/evaluate.py` scores the locked test set once, and `scripts/demo.py` prints a clip's predicted timeline.
 - [x] **Review tooling for #4.** `scripts/review.py` serves each clip with its proposed intervals for a human to accept or correct, and `scripts/agreement.py` compares the two independent gold-set passes.
 - [x] **Climbing scope decided.** The two candidate intervals were reviewed and are not climbing, so the class list stays at three. See [ADR 0007](adr/0007-drop-climbing-from-phase-2-scope.md) and [#16](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/16).
-- [ ] **Human verification of the timeline.** `data/annotations.csv` is still an empty header. This is the one step no script can take.
-- [ ] **The human gold set.** Two people label the shared sample blind, then reconcile. `data/agreement.csv` records the result.
-- [ ] **Lock the test set.** `scripts/split.py` proposes the assignment. A person reviews `data/splits.csv` and fills `test_locked_by`.
+- [x] **Human verification of the timeline.** One annotator verified intervals for all 22 clips (62 intervals, `data/annotations.csv`). The first six gold clips were labeled blind.
+- [x] **Split re-chosen on verified windows.** The first assignment left the test split with no Resting window. [ADR 0008](adr/0008-resplit-on-verified-windows-gold-is-test.md) re-chose it and makes the test split the eight-clip gold set (`data/gold-clips.txt`).
+- [ ] **The human gold set.** The first annotator has labeled all eight gold clips blind, including the two that moved into test. A second person labels all eight blind. `data/agreement.csv` records the result.
+- [ ] **Lock the test set.** After both blind passes, `scripts/split.py` must pass on the final labels. A person reviews `data/splits.csv` and fills `test_locked_by`. Do not run `scripts/evaluate.py` before then.
 - [ ] **Train, evaluate, and report.** Run the pipeline on the verified windows and write the report from the numbers it produces.
 
-The plan below is unchanged in its target date and its evaluation rules. What changed is the model family (ADR 0004) and the split rule (ADR 0005).
+The plan below is unchanged in its target date and its evaluation rules. What changed is the model family (ADR 0004), the split rule (ADR 0005) and the clip assignment (ADR 0008).
 
 ## Work plan
 
@@ -83,3 +84,4 @@ All three review the class definitions and final error analysis. The annotation 
 4. **Numeric target.** None is set. With 5 Eating clips and no Climbing clip, a target would be a guess. Report macro F1 and per-class numbers with their support and abstain rate, and let those be the result.
 5. **Pre-labeler scope.** Resting and Locomotion stay auto-derived as hints and Eating and Climbing are labeled by hand, per the smoke test's next step. The zero-shot stage must not carry weight in reported metrics.
 6. **Climbing is out of scope.** No Climbing-labelled clip was supplied, the two candidate intervals in [#16](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/16) were reviewed and are not climbing, and the instructor confirmed three classes are enough. `MODEL_CLASSES` stays at three. Climbing remains a valid annotation label that never becomes a model class, and no Climbing work is planned. The review was done by one person, not the two #16 asked for. See [ADR 0007](adr/0007-drop-climbing-from-phase-2-scope.md), which supersedes [ADR 0006](adr/0006-climbing-has-no-evidence-of-absence.md).
+7. **The split is chosen on verified windows, and the test split is the gold set.** The first assignment, made on folder names, left test with no Resting window once the intervals were verified. [ADR 0008](adr/0008-resplit-on-verified-windows-gold-is-test.md) re-chose it, and `scripts/split.py` now refuses a split with no verified window for a class. Test has five to seven windows per class, so every metric is reported with its support.
