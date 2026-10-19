@@ -15,7 +15,7 @@ import review as R
 
 
 def _interval(**overrides):
-    interval = {"start_s": 1.0, "end_s": 2.5, "behavior": "Eating"}
+    interval = {"start_s": 1.0, "end_s": 2.5, "behavior": "Eating", **{key: "unknown" for key in R.CONDITIONS}}
     interval.update(overrides)
     return interval
 
@@ -47,6 +47,15 @@ def test_conditions_are_kept_when_the_reviewer_sets_them():
     assert rows[0]["visibility"] == "partial"
     assert rows[0]["lighting"] == "infrared"
     assert rows[0]["notes"] == "fence edge"
+
+
+def test_optional_notes_roundtrip_with_thai_and_line_breaks(tmp_path):
+    notes = "เห็นสัตว์บางส่วน\nBoundary checked against video."
+    output = tmp_path / "answers.csv"
+    rows = R.annotation_rows("clip-a", "ada", [_interval(notes=notes)])
+    R.replace_rows(output, "clip-a", "ada", rows)
+    assert R.read_rows(output)[0]["notes"] == notes
+    assert R.annotation_rows("clip-a", "ada", [_interval()])[0]["notes"] == ""
 
 
 def test_uncertain_without_reason_is_rejected():
@@ -280,3 +289,88 @@ def test_http_save_uses_server_output_not_client_supplied_path(tmp_path):
     assert responses[0][0] == 200
     assert R.read_rows(second)[0]["annotator"] == "bob"
     assert first.read_bytes() == b"friend's unchanged original records"
+
+
+def test_edit_existing_loads_only_own_rows_and_saves_conditions(tmp_path):
+    output = tmp_path / "answers.csv"
+    R.replace_rows(output, "clip-a", "ada", R.annotation_rows("clip-a", "ada", [_interval()]))
+    R.replace_rows(output, "clip-a", "bob", R.annotation_rows("clip-a", "bob", [_interval(behavior="Resting")]))
+    original = output.read_bytes()
+    handler = object.__new__(R.Handler)
+    handler.server = SimpleNamespace(config=R.Config(
+        clips=[R.Clip("clip-a", Path("video.mp4"), 10)],
+        proposals={"clip-a": [{"secret": "machine proposal"}]},
+        out_file=output, edit_existing=True,
+    ))
+    handler.path = "/api/clip?id=clip-a&annotator=ada"
+    responses = []
+    handler._json = lambda data, status=200: responses.append((status, data))
+    handler.do_GET()
+    payload = responses.pop()[1]
+    assert "proposals" not in payload
+    assert [r["annotator"] for r in payload["intervals"]] == ["ada"]
+    assert output.read_bytes() == original
+    assert handler._clips_payload()[0]["verified"] == 0
+    interval = payload["intervals"][0]
+    interval.update(visibility="partial", lighting="infrared/grayscale",
+                    camera_view="elevated oblique", occlusion="tree/plant")
+    body = json.dumps({"clip_id": "clip-a", "annotator": "ada", "intervals": [interval]}).encode()
+    handler.path = "/api/verdict"
+    handler.rfile = io.BytesIO(body)
+    handler.headers = {"Content-Length": str(len(body))}
+    handler.do_POST()
+    assert responses.pop()[0] == 200
+    rows = R.read_rows(output)
+    ada = next(r for r in rows if r["annotator"] == "ada")
+    assert [ada[k] for k in R.CONDITIONS] == ["partial", "infrared/grayscale", "elevated oblique", "tree/plant"]
+    assert (ada["behavior"], ada["start_s"], ada["end_s"]) == ("Eating", "1.00", "2.50")
+    assert next(r for r in rows if r["annotator"] == "bob")["behavior"] == "Resting"
+    assert output.with_suffix(".csv.bak").read_bytes() == original
+    assert handler._clips_payload()[0]["verified"] > 0
+
+
+def test_edit_existing_rejects_blind_configuration(tmp_path):
+    handler = object.__new__(R.Handler)
+    handler.server = SimpleNamespace(config=R.Config(
+        clips=[R.Clip("clip-a", Path("video.mp4"), 10)], proposals={},
+        blind={"clip-a"}, out_file=tmp_path / "answers.csv", edit_existing=True,
+    ))
+    handler.path = "/api/clip?id=clip-a&annotator=ada"
+    responses = []
+    handler._json = lambda data, status=200: responses.append(status)
+    handler.do_GET()
+    assert responses == [400]
+
+
+@pytest.mark.parametrize("field", R.CONDITIONS)
+@pytest.mark.parametrize("value", [None, "", " ", "invented value"])
+def test_http_rejects_missing_or_invalid_condition_without_writing(tmp_path, field, value):
+    output = tmp_path / "answers.csv"
+    output.write_bytes(b"original submission")
+    interval = _interval(start_s=3.0, end_s=4.0)
+    if value is None:
+        interval.pop(field)
+    else:
+        interval[field] = value
+    handler = object.__new__(R.Handler)
+    handler.server = SimpleNamespace(config=R.Config(
+        clips=[R.Clip("clip-a", Path("video.mp4"), 10)], proposals={}, out_file=output))
+    handler.path = "/api/verdict"
+    body = json.dumps({"clip_id": "clip-a", "annotator": "ada", "intervals": [_interval(), interval]}).encode()
+    handler.rfile = io.BytesIO(body)
+    handler.headers = {"Content-Length": str(len(body))}
+    responses = []
+    handler._json = lambda data, status=200: responses.append((status, data))
+    handler.do_POST()
+    assert responses[0][0] == 400
+    assert field in responses[0][1]["error"]
+    assert "interval 2" in responses[0][1]["error"]
+    assert output.read_bytes() == b"original submission"
+    assert not output.with_suffix(".csv.bak").exists()
+
+
+def test_all_menu_choices_are_accepted_and_match_page_contract():
+    for field, choices in R.CONDITION_OPTIONS.items():
+        for choice in choices:
+            R.validate_conditions([_interval(**{field: choice})])
+    assert "__CONDITION_OPTIONS__" not in R.PAGE

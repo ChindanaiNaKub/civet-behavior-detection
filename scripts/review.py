@@ -48,6 +48,12 @@ import labels
 BEHAVIORS = labels.ALL_LABELS
 CSV_FIELDS = list(labels.ANNOTATION_FIELDS)
 CONDITIONS = ("visibility", "lighting", "camera_view", "occlusion")
+CONDITION_OPTIONS = {
+    "visibility": ("clear", "partial", "fully occluded", "out of view", "unknown"),
+    "lighting": ("daylight/color", "infrared/grayscale", "unknown"),
+    "camera_view": ("elevated oblique", "overhead", "animal-level side view", "unknown"),
+    "occlusion": ("none", "tree/plant", "fence/mesh", "enclosure structure", "multiple obstructions", "unknown"),
+}
 WRITE_LOCK = threading.Lock()
 
 
@@ -79,7 +85,7 @@ def annotation_rows(clip_id: str, annotator: str, intervals: list[dict]) -> list
             reason = ""
         if behavior == "Uncertain" and not reason:
             raise ValueError("Uncertain interval needs an uncertain_reason")
-        row = {name: str(interval.get(name) or "unknown") for name in CONDITIONS}
+        row = {name: str(interval.get(name) or "").strip() or "unknown" for name in CONDITIONS}
         row.update(
             clip_id=clip_id, start_s=f"{start:.2f}", end_s=f"{end:.2f}", behavior=behavior,
             uncertain_reason=reason, annotator=annotator, notes=str(interval.get("notes", "")).strip(),
@@ -98,6 +104,18 @@ def read_rows(path: Path) -> list[dict]:
         if reader.fieldnames != CSV_FIELDS:
             raise ValueError(f"{path}: header is {reader.fieldnames}, expected {CSV_FIELDS}")
         return [{name: row.get(name, "") for name in CSV_FIELDS} for row in reader]
+
+
+def validate_conditions(rows: list[dict]) -> None:
+    """Every submitted interval needs an explicit choice from all four menus."""
+    if not isinstance(rows, list):
+        raise ValueError("intervals must be a list")
+    for index, row in enumerate(rows, 1):
+        if not isinstance(row, dict):
+            raise ValueError(f"interval {index}: invalid record")
+        for name, choices in CONDITION_OPTIONS.items():
+            if row.get(name) not in choices:
+                raise ValueError(f"interval {index}: select a valid {name} before saving")
 
 
 def replace_rows(path: Path, clip_id: str, annotator: str, rows: list[dict]) -> int:
@@ -243,6 +261,7 @@ class Config:
     out_file: Path = Path("data/annotations.csv")
     redo: set[str] = field(default_factory=set)
     saved: set[str] = field(default_factory=set)
+    edit_existing: bool = False
     protected: list[Path] = field(default_factory=list)
 
 
@@ -268,7 +287,8 @@ class Handler(BaseHTTPRequestHandler):
         return next((clip for clip in self.config.clips if clip.clip_id == clip_id), None)
 
     def _clips_payload(self) -> list[dict]:
-        counts = pending_counts(verified_counts(self.config.out_file), self.config.redo, self.config.saved)
+        redo = {c.clip_id for c in self.config.clips} if self.config.edit_existing else self.config.redo
+        counts = pending_counts(verified_counts(self.config.out_file), redo, self.config.saved)
         return [
             {"clip_id": c.clip_id, "blind": c.clip_id in self.config.blind, "verified": counts.get(c.clip_id, 0)}
             for c in self.config.clips
@@ -299,7 +319,22 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "unknown clip"}, 404)
                 return
             blind = clip.clip_id in self.config.blind
-            self._json(clip_payload(clip, self.config.proposals.get(clip.clip_id, []), blind))
+            payload = clip_payload(clip, self.config.proposals.get(clip.clip_id, []), blind)
+            if self.config.edit_existing:
+                if blind:
+                    self._json({"error": "editing existing answers is not a blind pass"}, 400)
+                    return
+                annotator = args.get("annotator", [""])[0].strip()
+                rows = [dict(row) for row in read_rows(self.config.out_file)
+                        if row["clip_id"] == clip.clip_id and row["annotator"] == annotator]
+                if not rows:
+                    self._json({"error": "No saved intervals for this name and clip. Enter the exact original annotator name and select clips from that submission."}, 400)
+                    return
+                for row in rows:
+                    row["start_s"], row["end_s"] = float(row["start_s"]), float(row["end_s"])
+                payload.pop("proposals", None)
+                payload.update(edit_existing=True, intervals=rows)
+            self._json(payload)
         elif route.path == "/video":
             clip = self._clip(args.get("id", [""])[0])
             if clip is None or not clip.path.exists():
@@ -321,6 +356,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "unknown clip"}, 404)
                 return
             annotator = str(body.get("annotator", "")).strip()
+            validate_conditions(body.get("intervals", []))
             rows = annotation_rows(clip_id, annotator, body.get("intervals", []))
             if not rows:
                 raise ValueError("add at least one interval before saving")
@@ -402,6 +438,7 @@ PAGE = Path(__file__).with_name("review_page.html").read_text(encoding="utf-8")
 # The page's number keys follow labels.ALL_LABELS, so a label added there needs no
 # second edit in the JavaScript.
 PAGE = PAGE.replace("__BEHAVIORS__", json.dumps(list(BEHAVIORS)))
+PAGE = PAGE.replace("__CONDITION_OPTIONS__", json.dumps(CONDITION_OPTIONS))
 TRANSLATIONS = json.loads(Path(__file__).with_name("review_i18n.json").read_text(encoding="utf-8"))
 PAGE = PAGE.replace("__TRANSLATIONS__", json.dumps(TRANSLATIONS, ensure_ascii=True))
 
@@ -422,6 +459,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--only-file", type=Path, help="file of clip ids to serve, one per line")
     parser.add_argument("--redo", action="append", default=[], metavar="CLIP_ID", help="serve this clip again even if it already has rows")
     parser.add_argument("--redo-file", type=Path, help="file of clip ids to serve again, one per line")
+    parser.add_argument("--edit-existing", action="store_true", help="edit this annotator's saved rows in --out, without machine proposals; not a blind pass")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--auto-port", action="store_true", help="choose a free port when the preferred port is busy")
     parser.add_argument("--open-browser", action="store_true", help="open the system default browser after startup")
@@ -437,6 +475,8 @@ def main(argv: list[str] | None = None) -> int:
     clips = load_clips(args.clips_file, args.raw)
     known = {clip.clip_id for clip in clips}
     blind = blind_ids(args.blind, args.blind_file)
+    if args.edit_existing and blind:
+        parser.error("--edit-existing cannot be combined with blind clips; use a separate editing session")
     only = id_set(args.only, args.only_file)
     redo = id_set(args.redo, args.redo_file)
     for name, ids in (("blind", blind), ("only", only), ("redo", redo)):
@@ -452,7 +492,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"reviewed {sum(1 for c in clips if counts.get(c.clip_id))}/{len(clips)} clips -> {args.out}")
         return 0
 
-    config = Config(clips=clips, proposals=load_proposals(args.timeline), blind=blind, out_file=args.out, redo=redo, protected=args.protect_file)
+    config = Config(clips=clips, proposals=load_proposals(args.timeline), blind=blind, out_file=args.out, redo=redo, protected=args.protect_file, edit_existing=args.edit_existing)
     try:
         server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     except OSError:

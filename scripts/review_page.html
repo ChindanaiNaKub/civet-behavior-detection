@@ -4,29 +4,44 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Civet · Behavior review</title>
 <style>
-:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#111923;color:#e8eef5}*{box-sizing:border-box}body{margin:0 auto;padding:24px;max-width:1100px}h1{font-size:24px;margin:0 0 8px}p{color:#b5c3d3}section,fieldset{border:1px solid #344454;border-radius:12px;padding:16px;margin:14px 0;background:#192431}button,input,select{font:inherit;border:1px solid #526579;border-radius:7px;padding:9px;background:#233345;color:inherit}button{cursor:pointer}button:hover{background:#354b63}button:disabled{opacity:.4;cursor:default}.primary{background:#196f62}label{display:flex;flex-direction:column;gap:6px}input[type=number]{width:100%}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}video{display:block;width:100%;max-height:52vh;background:#000;border-radius:8px}#message{min-height:24px;color:#ffd194;white-space:pre-wrap}#status{font-weight:600}#strip{height:38px;position:relative;background:#0d141c;margin:12px 0;overflow:hidden;border-radius:6px}.block{position:absolute;top:3px;height:32px;overflow:hidden;color:#111;font-size:11px;padding:4px;border:0;border-radius:3px}.selected{outline:2px solid white;outline-offset:-2px}#playhead{position:absolute;top:0;height:100%;width:2px;background:#ff5a6c;pointer-events:none}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #344454}tr.active{background:#30455a}tbody tr{cursor:pointer}.table-wrap{overflow:auto}#help{font-size:13px;line-height:1.8}#saved{color:#8ed9bf}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #74c8f5}[hidden]{display:none!important}
+:root{color-scheme:light;--paper:#f4f3ec;--surface:#fcfcf7;--ink:#203c32;--muted:#64746a;--line:#cdd5c9;--forest:#244f3b;--accent:#c2d77b;--danger:#9b3933;--focus:#386b93;font-family:"Trebuchet MS","Leelawadee UI",sans-serif;color:var(--ink);background:radial-gradient(ellipse at 0 0,#dce6ce80,transparent 55%),repeating-linear-gradient(90deg,transparent,transparent 79px,#244f3b03 80px),var(--paper);font-size:15px}
+*{box-sizing:border-box}body{margin:0 auto;padding:36px 40px 24px;max-width:1640px;min-height:100vh;background:transparent;animation:arrive .45s ease both}h1,h2,p{margin-top:0}p{line-height:1.6;color:var(--muted)}a{color:var(--forest);text-underline-offset:3px}button,input,select,textarea{font:inherit;color:inherit;border:1px solid var(--line);border-radius:4px;padding:11px 12px;background:var(--surface);min-height:44px;max-width:100%;transition:border-color .18s,background .18s,box-shadow .18s}button{cursor:pointer;font-weight:600;line-height:1.35}button:hover:not(:disabled){background:#e7eddf;border-color:#93a68d}button:active:not(:disabled){transform:translateY(1px)}button:disabled{opacity:.45;cursor:default}input:disabled,select:disabled,textarea:disabled{background:#e9ece4;color:#8a9389;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,tr:focus-visible{outline:3px solid var(--focus);outline-offset:3px}.primary{background:var(--forest);border-color:var(--forest);color:#fff}.primary:hover:not(:disabled){background:#183d2c;border-color:#183d2c}label{display:flex;flex-direction:column;gap:7px;min-width:0;font-size:13px;font-weight:600}input,select,textarea{width:100%;font-weight:400;font-size:14px}textarea{resize:vertical;min-height:76px}input[type=number],#clock,td:nth-child(3),td:nth-child(4){font-variant-numeric:tabular-nums}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}[hidden]{display:none!important}
+.masthead{display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid var(--ink);padding-bottom:22px}.brand{display:flex;align-items:baseline;flex-wrap:wrap;gap:18px}.brand h1{font-family:Cambria,Georgia,"Leelawadee UI",serif;font-size:64px;letter-spacing:-3px;line-height:1;margin:0;font-weight:500}.brand p{margin:0;font-size:14px;color:var(--forest);letter-spacing:.08em}.language-control{width:155px}.language-control span{font-size:11px;color:var(--muted)}.intro{margin:18px 0 12px;max-width:820px;font-size:15px}body>details{margin:0 0 20px;font-size:13px;color:var(--muted);max-width:820px}summary{cursor:pointer;color:var(--forest);width:fit-content;padding:4px 0}details ol{line-height:1.8;padding-left:22px}#identity{padding:32px 0 44px;max-width:640px}#identity section{align-items:flex-end;gap:16px}#identity label{flex:1;min-width:220px}#identity button{padding:12px 24px}#message:empty{display:none}#message{border-left:3px solid #b17c32;padding:12px 16px;background:#fbefd9;color:#714d1d;white-space:pre-wrap;margin:14px 0;line-height:1.5}
+#workspace{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(350px,1fr);grid-template-areas:"stage editor" "records editor" "save save" "help help";gap:24px 32px;align-items:start;animation:workspace-in .35s ease both}.review-stage{grid-area:stage;min-width:0}.session-line{justify-content:space-between;gap:8px;font-size:12px;line-height:1.5}#status{font-weight:600;overflow-wrap:anywhere}#saved{color:var(--forest);font-size:12px}progress{display:block;appearance:none;width:100%;height:3px;margin:12px 0;background:#dde3d5;border:0}progress::-webkit-progress-bar{background:#dde3d5}progress::-webkit-progress-value{background:var(--forest);transition:width .35s ease}progress::-moz-progress-bar{background:var(--forest)}#mode{font-size:11px;letter-spacing:.02em;margin:10px 0 14px;color:var(--muted)}video{display:block;width:100%;max-height:58vh;aspect-ratio:16/9;object-fit:contain;background:#101c16;border-radius:0}#strip{height:38px;position:relative;background:#e1e5d9;margin:10px 0 18px;overflow:hidden;border-radius:2px}.block{position:absolute;top:4px;height:30px;min-height:0;overflow:hidden;color:#17291f;font-size:10px;padding:4px;border:0;border-radius:1px;white-space:nowrap}.block:hover:not(:disabled){filter:brightness(.95);border:0}.selected{outline:2px solid var(--forest);outline-offset:-2px}#playhead{position:absolute;top:0;height:100%;width:2px;background:#a53e29;pointer-events:none}.playback{gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}#clock{font-size:12px;color:var(--muted);margin-right:auto}.playback label{flex-direction:row;align-items:center;gap:8px;font-size:11px}.playback select{width:75px}#step{font-size:13px;min-height:22px;margin:18px 0 12px}.marking-actions{gap:8px}.marking-actions button{font-size:12px;flex:1;padding:10px 8px}#add{background:transparent;font-weight:400}#media-help{border-left:3px solid var(--danger);padding-left:16px;margin-top:18px;font-size:13px}
+#editor{grid-area:editor;min-width:0;margin:0;padding:0 0 0 28px;border:0;border-left:1px solid var(--line);align-self:start}legend{font-family:Cambria,Georgia,"Leelawadee UI",serif;font-size:25px;padding:0 0 20px;width:100%;letter-spacing:-.3px}#editor .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 12px}#editor .grid label:first-child,#editor .grid label:nth-child(n+4){grid-column:1/-1}#editor .grid label:first-child select{border-color:#7d9873;background:#f8fbf1;font-weight:600}#editor>p{font-size:11px;line-height:1.65;margin:16px 0}.editor-actions{gap:8px;padding-top:16px;border-top:1px solid var(--line)}.editor-actions button{font-size:11px;padding:9px 8px;flex:1}#delete{color:var(--danger);background:transparent;border-color:transparent}
+.records-section{grid-area:records;min-width:0;border-top:1px solid var(--line);padding-top:20px}.records-section h2{font-family:Cambria,Georgia,"Leelawadee UI",serif;font-size:24px;font-weight:400;margin:0 0 12px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:13px 10px;border-bottom:1px solid var(--line);line-height:1.5}th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}td:first-child{color:var(--muted);width:35px}td:last-child{min-width:140px;overflow-wrap:anywhere}tr.active{background:#e1eacf;animation:row-select .2s ease}tbody tr{cursor:pointer;transition:background .18s}tbody tr:hover{background:#e9eedf}#empty{font-size:13px;margin:20px 0}.save-bar{grid-area:save;border-top:1px solid var(--ink);padding:20px 0;justify-content:flex-end}.save-bar button{min-width:245px;padding:14px 24px}#help{grid-area:help;font-size:11px;line-height:1.9;margin:0;padding-top:8px;color:var(--muted)}
+@keyframes arrive{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@keyframes workspace-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}@keyframes row-select{from{background:#c8dba9}to{background:#e1eacf}}
+@media(min-width:1400px){body{padding-left:56px;padding-right:56px}#workspace{column-gap:44px}#editor{padding-left:36px}}
+@media(max-width:980px){body{padding:24px}#workspace{grid-template-columns:minmax(0,1fr) minmax(300px,.9fr);gap:20px}.brand h1{font-size:52px}#editor{padding-left:20px}.marking-actions button{flex:1 1 40%}#add{flex-basis:100%}#clock{margin-right:0}.playback label{margin-left:auto}}
+@media(max-width:720px){body{padding:20px 16px}.masthead{align-items:flex-start;padding-bottom:18px}.brand{display:block}.brand h1{font-size:48px;letter-spacing:-2px}.brand p{font-size:11px;letter-spacing:.03em;margin-top:7px}.language-control{width:116px}.language-control select{font-size:12px}.intro{font-size:13px;margin-top:16px}#workspace{display:flex;flex-direction:column;gap:24px}#workspace>*{width:100%}#editor{position:static;max-height:none;overflow:visible;border-left:0;border-top:1px solid var(--line);padding:22px 0 0}.records-section{order:2}.save-bar{order:3;position:sticky;bottom:0;background:linear-gradient(0deg,var(--paper) 90%,#f4f3ecf0);padding:14px 0;margin:0;z-index:3}.save-bar button{width:100%;min-width:0}#help{order:4}.session-line{align-items:flex-start}video{max-height:none}.playback{gap:10px}#clock{font-size:11px}.playback label span{display:none}legend{font-size:24px;padding-bottom:16px}.marking-actions button{flex:1 1 40%}.editor-actions{flex-wrap:wrap}.editor-actions button{flex:1 1 40%}#delete{flex-basis:100%}#identity{padding-top:22px}#identity section{align-items:stretch}#identity button{width:100%}th,td{padding:11px 7px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
-<header class="row" style="justify-content:space-between"><h1 data-i18n="title">Civet · Behavior review</h1><label><span data-i18n="language">Language / ภาษา</span><select id="language"><option value="en" selected>English</option><option value="th">ไทย</option></select></label></header>
-<p data-i18n="intro">Watch each clip and record the behaviors and time ranges you observe yourself.</p>
+<header class="masthead"><div class="brand"><h1>Civet<span aria-hidden="true" style="color:#849f5b">.</span></h1><p data-i18n="workspaceTitle">Behavior review</p></div><label class="language-control"><span data-i18n="language">Language / ภาษา</span><select id="language"><option value="en" selected>English</option><option value="th">ไทย</option></select></label></header>
+<p class="intro" data-i18n="intro">Watch each clip and record the behaviors and time ranges you observe yourself.</p>
 <details><summary data-i18n="quickStart">First time? Follow these 3 steps</summary><ol><li data-i18n="guide1"></li><li data-i18n="guide2"></li><li data-i18n="guide3"></li></ol><p data-i18n="draftGuide"></p></details>
 <form id="identity" novalidate><section class="row"><label><span data-i18n="annotator">Annotator name</span><input id="annotator" required autocomplete="name"></label><button class="primary" type="submit" data-i18n="begin">Start review</button></section></form>
 <div id="message" role="status" aria-live="polite"></div>
 <main id="workspace" hidden>
-<section><div class="row"><span id="status"></span><span id="saved" aria-live="polite"></span></div><progress id="progress" value="0" max="8" aria-label="Saved clips" data-i18n-aria="progress"></progress><p id="mode"></p>
+<section class="review-stage"><div class="row session-line"><span id="status"></span><span id="saved" aria-live="polite"></span></div><progress id="progress" value="0" max="8" aria-label="Saved clips" data-i18n-aria="progress"></progress><p id="mode"></p>
 <video id="player" controls preload="metadata"></video><div id="strip"></div>
-<div class="row"><button id="toggle" type="button" data-i18n="play">Play / pause</button><span id="clock">0.00 seconds</span><label><span data-i18n="speed">Playback speed</span><select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>
+<div class="row playback"><button id="toggle" type="button" data-i18n="play">Play / pause</button><span id="clock">0.00 seconds</span><label><span data-i18n="speed">Playback speed</span><select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>
 <p id="step"></p>
-<div class="row"><button id="mark-start" class="primary" type="button" data-i18n="markStart">1. Mark start</button><button id="mark-end" type="button" disabled data-i18n="markEnd">2. Mark end</button><button id="add" type="button" data-i18n="add">+ Add interval manually</button></div>
+<div class="row marking-actions"><button id="mark-start" class="primary" type="button" data-i18n="markStart">1. Mark start</button><button id="mark-end" type="button" disabled data-i18n="markEnd">2. Mark end</button><button id="add" type="button" data-i18n="add">+ Add interval manually</button></div>
 <div id="media-help" hidden><p data-i18n="mediaGuide"></p><a href="https://support.mozilla.org/en-US/kb/audio-and-video-firefox" target="_blank" rel="noopener noreferrer" data-i18n="mediaLink">Mozilla video playback help</a></div>
 </section>
 <fieldset id="editor" hidden><legend data-i18n="editor">Edit selected interval</legend><div class="grid">
 <label><span data-i18n="behavior">Behavior</span><select id="behavior"></select></label>
 <label><span data-i18n="start">Start (seconds)</span><input id="start" type="number" min="0" step="0.01"></label>
 <label><span data-i18n="end">End (seconds)</span><input id="end" type="number" min="0" step="0.01"></label>
+<label><span data-i18n="visibility"></span><select id="visibility" required></select></label>
+<label><span data-i18n="lighting"></span><select id="lighting" required></select></label>
+<label><span data-i18n="camera_view"></span><select id="camera_view" required></select></label>
+<label><span data-i18n="occlusion"></span><select id="occlusion" required></select></label>
 <label><span data-i18n="reason">Reason when Uncertain</span><input id="reason" type="text" placeholder="For example: animal hidden from view" data-i18n-placeholder="reasonPlaceholder"></label>
-</div><div class="row" style="margin-top:12px"><button id="set-start" type="button" data-i18n="setStart">Use video position as start</button><button id="set-end" type="button" data-i18n="setEnd">Use video position as end</button><button id="delete" type="button" data-i18n="delete">Delete selected interval</button></div></fieldset>
-<section><div class="table-wrap"><table><thead><tr><th>#</th><th data-i18n="behavior">Behavior</th><th data-i18n="tableStart">Start</th><th data-i18n="tableEnd">End</th><th data-i18n="tableReason">Reason</th></tr></thead><tbody id="records"></tbody></table></div><p id="empty" data-i18n="empty"></p></section>
-<div class="row"><button id="save" class="primary" type="button" data-i18n="save">Save clip and continue</button></div>
+<label style="grid-column:1/-1"><span data-i18n="notes">Notes (optional)</span><textarea id="notes" rows="2" data-i18n-placeholder="notesPlaceholder"></textarea></label>
+</div><p data-i18n="conditionsHelp"></p><div class="row editor-actions"><button id="set-start" type="button" data-i18n="setStart">Use video position as start</button><button id="set-end" type="button" data-i18n="setEnd">Use video position as end</button><button id="delete" type="button" data-i18n="delete">Delete selected interval</button></div></fieldset>
+<section class="records-section"><h2 data-i18n="recordedIntervals">Recorded intervals</h2><div class="table-wrap"><table><thead><tr><th>#</th><th data-i18n="behavior">Behavior</th><th data-i18n="tableStart">Start</th><th data-i18n="tableEnd">End</th><th data-i18n="tableReason">Reason</th></tr></thead><tbody id="records"></tbody></table></div><p id="empty" data-i18n="empty"></p></section>
+<div class="row save-bar"><button id="save" class="primary" type="button" data-i18n="save">Save clip and continue</button></div>
 <p id="help"><span data-i18n="shortcuts"></span><br><span data-i18n="restingRule"></span></p>
 </main>
 <script>
@@ -34,6 +49,8 @@ const KEYS=__BEHAVIORS__,COLORS={Eating:'#8fd694',Locomotion:'#8fb8f0',Resting:'
 const $=id=>document.getElementById(id),fmt=n=>Number.isFinite(n)?n.toFixed(2):'';
 let clips=[],clip=null,intervals=[],sel=0,annotator='',dirty=false,saving=false,pendingStart=null,reviewId='',resumeTime=0;
 const TRANSLATIONS=__TRANSLATIONS__;
+const CONDITION_OPTIONS=__CONDITION_OPTIONS__;
+const normalizeConditions=rows=>rows.map(row=>{const copy={...row};for(const [key,choices] of Object.entries(CONDITION_OPTIONS))if(copy[key]==='unknown'||!choices.includes(copy[key]))copy[key]='';return copy;});
 let language='en',notice=null,savedNotice='',stepKey='stepStart';
 const t=(key,values={})=>(TRANSLATIONS[language][key]||TRANSLATIONS.en[key]||key).replace(/\{(\w+)\}/g,(_,name)=>String(values[name]??''));
 function drawMessage(){$('message').textContent=notice?(notice.raw??t(notice.key,notice.values)):'';}
@@ -47,21 +64,24 @@ function applyLanguage(){
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.dataset.i18nPlaceholder);});
   document.querySelectorAll('[data-i18n-aria]').forEach(el=>{el.setAttribute('aria-label',t(el.dataset.i18nAria));});
   for(const option of $('behavior').options)option.textContent=t(option.value);
+  for(const key of Object.keys(CONDITION_OPTIONS))for(const option of $(key).options)option.textContent=option.value?t('condition_'+option.value):t('chooseCondition');
   drawMessage();saved(savedNotice);setStep(stepKey);if(clip)render();
 }
 $('language').onchange=()=>{language=$('language').value==='th'?'th':'en';applyLanguage();};
 async function api(path,options){const response=await fetch(path,options),data=await response.json();if(!response.ok||data.error)throw Error(data.error||t('requestFailed'));return data;}
 const nextClipId=()=>clips.find(c=>!c.verified)?.clip_id;
 KEYS.forEach(label=>{const option=document.createElement('option');option.value=label;option.textContent=t(label);$('behavior').appendChild(option);});
+for(const [key,choices] of Object.entries(CONDITION_OPTIONS)){const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent=t('chooseCondition');$(key).appendChild(placeholder);for(const value of choices){const option=document.createElement('option');option.value=value;option.textContent=t('condition_'+value);$(key).appendChild(option);}}
 const draftKey=()=>`civet-review-v1:${reviewId}:${encodeURIComponent(annotator)}:${clip.clip_id}`;
-function persistDraft(){if(!clip||!reviewId)return;try{localStorage.setItem(draftKey(),JSON.stringify({intervals,pendingStart,time:$('player').currentTime,duration:clip.duration_s}));saved('draftSaved');}catch(error){saved('draftUnavailable');}}
+function persistDraft(){if(!clip||!reviewId)return;try{localStorage.setItem(draftKey(),JSON.stringify({conditionSchema:1,intervals,pendingStart,time:$('player').currentTime,duration:clip.duration_s}));saved('draftSaved');}catch(error){saved('draftUnavailable');}}
 async function load(id){
   message('');dirty=false;pendingStart=null;resumeTime=0;$('mark-end').disabled=true;$('media-help').hidden=true;setStep('stepStart');
   if(!id){clip=null;$('player').pause();$('workspace').hidden=true;message('complete');return;}
-  clip=await api('/api/clip?id='+encodeURIComponent(id));
-  intervals=(clip.proposals||[]).map(p=>({...p,uncertain_reason:p.behavior==='Uncertain'?'machine proposal':'',visibility:'unknown',lighting:'unknown',camera_view:'unknown',occlusion:'unknown',notes:''}));
+  clip=await api('/api/clip?id='+encodeURIComponent(id)+'&annotator='+encodeURIComponent(annotator));
+  intervals=clip.edit_existing?clip.intervals:(clip.proposals||[]).map(p=>({...p,uncertain_reason:'',visibility:'',lighting:'',camera_view:'',occlusion:'',notes:''}));
+  intervals=normalizeConditions(intervals);
   sel=0;$('player').src=clip.video_url;saved('');$('workspace').hidden=false;
-  try{const draft=JSON.parse(localStorage.getItem(draftKey())||'null');if(draft&&draft.duration===clip.duration_s&&Array.isArray(draft.intervals)){intervals=draft.intervals;pendingStart=draft.pendingStart??null;resumeTime=Number.isFinite(draft.time)?draft.time:0;dirty=true;saved('draftRestored');if(pendingStart!==null){$('mark-end').disabled=false;setStep('stepEnd');}}}catch(error){message('draftError');}
+  try{const draft=JSON.parse(localStorage.getItem(draftKey())||'null');if(draft&&draft.duration===clip.duration_s&&Array.isArray(draft.intervals)){intervals=draft.conditionSchema===1?draft.intervals:normalizeConditions(draft.intervals);pendingStart=draft.pendingStart??null;resumeTime=Number.isFinite(draft.time)?draft.time:0;dirty=true;saved('draftRestored');if(pendingStart!==null){$('mark-end').disabled=false;setStep('stepEnd');}}}catch(error){message('draftError');}
   render();
 }
 $('identity').addEventListener('submit',async event=>{
@@ -70,21 +90,21 @@ $('identity').addEventListener('submit',async event=>{
 });
 function render(){
   const completed=clips.filter(c=>c.verified).length;$('status').textContent=t('clipStatus',{current:clips.findIndex(c=>c.clip_id===clip.clip_id)+1,total:clips.length,completed,id:clip.clip_id});$('progress').max=clips.length;$('progress').value=completed;
-  $('mode').textContent=t(clip.blind?'blind':'reviewMode');
+  $('mode').textContent=t(clip.edit_existing?'editMode':clip.blind?'blind':'reviewMode');
   $('empty').hidden=intervals.length>0;
   const tbody=$('records');tbody.replaceChildren();const strip=$('strip');strip.replaceChildren();
   intervals.forEach((iv,i)=>{
-    const tr=document.createElement('tr');if(i===sel)tr.className='active';
+    const tr=document.createElement('tr');tr.tabIndex=0;tr.setAttribute('aria-selected',String(i===sel));tr.setAttribute('aria-label',t('selectInterval',{number:i+1}));tr.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();sel=i;render();}};if(i===sel)tr.className='active';
     [i+1,iv.behavior,fmt(iv.start_s),fmt(iv.end_s),iv.uncertain_reason||''].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
     tr.onclick=()=>{sel=i;render();};tbody.appendChild(tr);
     const block=document.createElement('button');block.type='button';block.className='block'+(i===sel?' selected':'');block.style.left=iv.start_s/clip.duration_s*100+'%';block.style.width=Math.max((iv.end_s-iv.start_s)/clip.duration_s*100,.5)+'%';block.style.background=COLORS[iv.behavior];block.textContent=iv.behavior;block.setAttribute('aria-label',t('selectInterval',{number:i+1}));block.onclick=()=>{sel=i;render();};strip.appendChild(block);
   });
   const marker=document.createElement('div');marker.id='playhead';strip.appendChild(marker);clock();
   const iv=intervals[sel];$('editor').hidden=!iv;
-  if(iv){$('behavior').value=iv.behavior;$('start').value=fmt(iv.start_s);$('end').value=fmt(iv.end_s);$('reason').value=iv.uncertain_reason||'';$('start').max=clip.duration_s;$('end').max=clip.duration_s;}
+  if(iv){for(const key of ['visibility','lighting','camera_view','occlusion'])$(key).value=iv[key]||'';$('behavior').value=iv.behavior;$('start').value=fmt(iv.start_s);$('end').value=fmt(iv.end_s);$('reason').disabled=iv.behavior!=='Uncertain';$('reason').required=iv.behavior==='Uncertain';if(iv.behavior!=='Uncertain')iv.uncertain_reason='';$('reason').value=iv.uncertain_reason||'';$('notes').value=iv.notes||'';$('start').max=clip.duration_s;$('end').max=clip.duration_s;}
 }
 function changed(){dirty=true;message('');render();persistDraft();}
-function appendInterval(start,end){intervals.push({start_s:start,end_s:end,behavior:'Uncertain',uncertain_reason:'',visibility:'unknown',lighting:'unknown',camera_view:'unknown',occlusion:'unknown',notes:''});sel=intervals.length-1;changed();$('behavior').focus();setStep('stepChoose');}
+function appendInterval(start,end){intervals.push({start_s:start,end_s:end,behavior:'Uncertain',uncertain_reason:'',visibility:'',lighting:'',camera_view:'',occlusion:'',notes:''});sel=intervals.length-1;changed();$('behavior').focus();setStep('stepChoose');}
 function add(){
   if(!clip||saving)return;if(pendingStart!==null){message('finishPending');return;}const t=Number($('player').currentTime.toFixed(2));
   if(t>=clip.duration_s){message('seekBeforeEnd');return;}
@@ -101,10 +121,11 @@ $('speed').onchange=()=>{$('player').playbackRate=Number($('speed').value);};
 $('player').addEventListener('loadedmetadata',()=>{$('player').playbackRate=Number($('speed').value);if(resumeTime>0){$('player').currentTime=Math.min(resumeTime,clip.duration_s);resumeTime=0;}});
 $('player').addEventListener('error',()=>{if(clip){$('media-help').hidden=false;message('mediaError');}});
 $('behavior').onchange=()=>{const iv=intervals[sel];if(iv){iv.behavior=$('behavior').value;if(iv.behavior!=='Uncertain')iv.uncertain_reason='';changed();}};
-for(const [id,key] of [['start','start_s'],['end','end_s'],['reason','uncertain_reason']]){
-  $(id).addEventListener('input',()=>{const iv=intervals[sel];if(iv){iv[key]=id==='reason'?$(id).value:($(id).value===''?NaN:Number($(id).value));dirty=true;persistDraft();}});
+for(const [id,key] of [['start','start_s'],['end','end_s'],['reason','uncertain_reason'],['notes','notes']]){
+  $(id).addEventListener('input',()=>{const iv=intervals[sel];if(iv){if(id==='reason'&&iv.behavior!=='Uncertain')return;iv[key]=['reason','notes'].includes(id)?$(id).value:($(id).value===''?NaN:Number($(id).value));dirty=true;persistDraft();}});
   $(id).addEventListener('change',()=>{if(clip)render();});
 }
+for(const key of ['visibility','lighting','camera_view','occlusion'])$(key).addEventListener('change',()=>{const iv=intervals[sel];if(iv){iv[key]=$(key).value;dirty=true;message('');persistDraft();}});
 for(const [id,key] of [['set-start','start_s'],['set-end','end_s']])$(id).onclick=()=>{if(intervals[sel]){intervals[sel][key]=Number($('player').currentTime.toFixed(2));changed();}};
 async function save(){
   if(!clip||saving)return;
@@ -113,7 +134,8 @@ async function save(){
   const ordered=[...intervals].sort((a,b)=>a.start_s-b.start_s);
   for(let i=0;i<ordered.length;i++){const iv=ordered[i];
     if(!Number.isFinite(iv.start_s)||!Number.isFinite(iv.end_s)||iv.start_s<0||iv.end_s<=iv.start_s||iv.end_s>clip.duration_s+.005){message('invalidTime');return;}
-    if(iv.behavior==='Uncertain'&&!iv.uncertain_reason.trim()){message('needReason');return;}
+    for(const [key,choices] of Object.entries(CONDITION_OPTIONS))if(!choices.includes(iv[key])){sel=intervals.indexOf(iv);render();message('needConditions',{number:sel+1,field:t(key)});$(key).focus();return;}
+    if(iv.behavior==='Uncertain'&&!(iv.uncertain_reason||'').trim()){sel=intervals.indexOf(iv);render();message('needReason');$('reason').focus();return;}
     if(i&&iv.start_s<ordered[i-1].end_s){message('overlap');return;}
   }
   saving=true;$('save').disabled=true;$('editor').disabled=true;$('player').pause();
@@ -127,7 +149,7 @@ document.addEventListener('keydown',event=>{
   if(['BUTTON','VIDEO'].includes(event.target.tagName)&&[' ','Enter'].includes(event.key))return;
   const key=event.key.toLowerCase(),iv=intervals[sel];
   if(key===' '){event.preventDefault();toggle();}
-  else if(key==='n')add();else if(key==='d')remove();else if(key==='r'&&iv)$('reason').focus();
+  else if(key==='n')add();else if(key==='d')remove();else if(key==='r'&&iv&&iv.behavior==='Uncertain')$('reason').focus();
   else if(key==='arrowleft'){event.preventDefault();sel=Math.max(0,sel-1);render();}
   else if(key==='arrowright'){event.preventDefault();sel=Math.min(intervals.length-1,sel+1);render();}
   else if(key>='1'&&key<='6'&&iv){iv.behavior=KEYS[Number(key)-1];if(iv.behavior!=='Uncertain')iv.uncertain_reason='';changed();}
