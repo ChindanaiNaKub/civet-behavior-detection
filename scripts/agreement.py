@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 from pathlib import Path
 
 import labels
@@ -26,6 +27,38 @@ import review
 
 # Two boundaries count as the same when they land within this many seconds.
 BOUNDARY_TOLERANCE_S = 0.5
+
+
+def gold_pass(rows: list[dict], gold: set[str], name: str, *, allow_other: bool = False) -> list[dict]:
+    """Require every gold clip and one consistent identity before comparison.
+
+    This checks the submitted file, not whether a human actually worked blind.
+    The coordinator must confirm independence with the reviewers separately.
+    """
+    present = {row["clip_id"] for row in rows}
+    if not gold:
+        raise ValueError("gold clip list is empty")
+    if gold - present:
+        raise ValueError(f"{name} missing gold clips: {sorted(gold - present)}")
+    if not allow_other and present - gold:
+        raise ValueError(f"{name} contains non-gold clips: {sorted(present - gold)}")
+    selected = [dict(row) for row in rows if row["clip_id"] in gold]
+    identities = {row["annotator"].strip().casefold() for row in selected}
+    if len(identities) != 1 or "" in identities:
+        raise ValueError(f"{name} needs exactly one non-empty annotator identity across the gold clips")
+    for row in selected:
+        start, end = float(row["start_s"]), float(row["end_s"])
+        if not math.isfinite(start) or not math.isfinite(end) or start < 0 or end <= start:
+            raise ValueError(f"{name}: invalid interval in {row['clip_id']}")
+        if row["behavior"] not in labels.ALL_LABELS:
+            raise ValueError(f"{name}: unknown behavior in {row['clip_id']}")
+        if row["behavior"] == "Uncertain" and not row.get("uncertain_reason", "").strip():
+            raise ValueError(f"{name}: Uncertain needs a reason in {row['clip_id']}")
+    for clip_id in gold:
+        intervals = sorted((float(r["start_s"]), float(r["end_s"])) for r in selected if r["clip_id"] == clip_id)
+        if any(current[0] < previous[1] for previous, current in zip(intervals, intervals[1:])):
+            raise ValueError(f"{name}: overlapping intervals in {clip_id}")
+    return selected
 
 
 def overlap(first, second) -> float:
@@ -109,12 +142,27 @@ def main() -> int:
     parser.add_argument("--a", type=Path, default=Path("data/annotations.csv"))
     parser.add_argument("--b", type=Path, default=Path("data/annotations-second.csv"))
     parser.add_argument("--out", type=Path, default=Path("data/agreement.csv"))
+    parser.add_argument("--gold-file", type=Path, default=Path("data/gold-clips.txt"))
     args = parser.parse_args()
 
     if not args.b.exists():
         parser.error(f"{args.b} not found; the second annotator runs scripts/review.py --out {args.b} on the gold clips")
 
-    rows, orphans = compare(review.read_rows(args.a), review.read_rows(args.b))
+    try:
+        gold = review.id_set([], args.gold_file)
+        a_rows = gold_pass(review.read_rows(args.a), gold, "first pass", allow_other=True)
+        b_rows = gold_pass(review.read_rows(args.b), gold, "second pass")
+        if a_rows[0]["annotator"].strip().casefold() == b_rows[0]["annotator"].strip().casefold():
+            raise ValueError("gold passes need two different annotators")
+        if args.out.resolve() in {args.a.resolve(), args.b.resolve()}:
+            raise ValueError("output must not overwrite either annotation file")
+        existing = review_ledger(args.out)
+        if any(row.get(field, "").strip() for row in existing for field in
+               ("resolved_labels", "resolution_reason", "reviewed_by", "reviewed_at")):
+            raise ValueError("output contains reconciliation work; choose a new --out to preserve it")
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    rows, orphans = compare(a_rows, b_rows)
     if not rows:
         parser.error("no clip was labelled in both files, so there is nothing to compare")
 
@@ -130,6 +178,13 @@ def main() -> int:
     print("reconciliation columns are blank for the two annotators to fill.")
     print(f"model classes: {', '.join(labels.MODEL_CLASSES)}")
     return 0
+
+
+def review_ledger(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    with path.open(newline="") as handle:
+        return list(csv.DictReader(handle))
 
 
 if __name__ == "__main__":
