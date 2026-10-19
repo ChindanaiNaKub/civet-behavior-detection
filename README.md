@@ -10,6 +10,7 @@ The model classes are Eating, Locomotion and Resting. The brief calls the third 
 
 ## Start here
 
+- [Gold review handoff: second reviewer, reconciliation and test lock](docs/GOLD-REVIEW-HANDOFF.md)
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
 - [Footage and compute audit](docs/FOOTAGE-AUDIT.md)
 - [Behavior interval annotation guide](docs/ANNOTATION-GUIDE.md)
@@ -88,11 +89,22 @@ python3 scripts/review.py --only-file data/gold-clips.txt --blind-file data/gold
 
 Second annotator, into their own file:
 
+For a separate folder containing only blind review materials, run
+`python scripts/prepare_gold_review.py` and give `outputs/gold-review/` to the
+second person. They run `python start_review.py` there and return
+`data/annotations-second.csv`. This avoids exposing existing answers in the
+repository. See the [handoff guide](docs/GOLD-REVIEW-HANDOFF.md) for receiving,
+reconciling and locking the final dataset. If working in the repository instead:
+
 ```
 python3 scripts/review.py --only-file data/gold-clips.txt --blind-file data/gold-clips.txt --out data/annotations-second.csv
 ```
 
 Then compare the two independent passes and fill the reconciliation columns in `data/agreement.csv`.
+
+The comparison requires every gold clip and two distinct, consistent annotator
+identities. It refuses to overwrite existing reconciliation work. File validation
+cannot verify that a reviewer worked independently or watched the whole clip.
 
 ```
 python3 scripts/agreement.py
