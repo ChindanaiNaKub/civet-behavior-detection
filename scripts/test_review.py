@@ -5,7 +5,9 @@ Pure standard library, no HTTP server, no video and no GPU: run with
 """
 
 import json
+import io
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -175,3 +177,106 @@ def test_a_redo_clip_counts_as_unverified_until_saved_in_this_run():
     assert R.pending_counts(counts, {"a"}, set()) == {"a": 0, "b": 2}
     assert R.pending_counts(counts, {"a"}, {"a"}) == {"a": 3, "b": 2}
     assert R.pending_counts(counts, set(), set()) == counts
+
+
+def test_atomic_save_preserves_original_if_replacement_fails(tmp_path, monkeypatch):
+    out = tmp_path / "second.csv"
+    R.replace_rows(out, "clip-a", "bob", R.annotation_rows("clip-a", "bob", [_interval()]))
+    original = out.read_bytes()
+
+    def fail(*args):
+        raise PermissionError("file is open elsewhere")
+
+    monkeypatch.setattr(R.os, "replace", fail)
+    with pytest.raises(PermissionError):
+        R.replace_rows(out, "clip-a", "bob", R.annotation_rows("clip-a", "bob", [_interval(behavior="Resting")]))
+    assert out.read_bytes() == original
+    assert out.with_suffix(".csv.bak").read_bytes() == original
+    assert {p.name for p in tmp_path.iterdir()} == {"second.csv", "second.csv.bak"}
+
+
+def test_saving_second_pass_does_not_touch_first_pass_and_keeps_backup(tmp_path):
+    first, second = tmp_path / "first.csv", tmp_path / "second.csv"
+    R.replace_rows(first, "clip-a", "friend", R.annotation_rows("clip-a", "friend", [_interval()]))
+    original = first.read_bytes()
+    R.check_output(second, [first])
+    R.replace_rows(second, "clip-a", "bob", R.annotation_rows("clip-a", "bob", [_interval()]))
+    before_second = second.read_bytes()
+    R.replace_rows(second, "clip-a", "bob", R.annotation_rows("clip-a", "bob", [_interval(behavior="Resting")]))
+    assert first.read_bytes() == original
+    assert second.with_suffix(".csv.bak").read_bytes() == before_second
+    with pytest.raises(ValueError, match="protected"):
+        R.check_output(first.parent / "." / first.name, [first])
+
+
+@pytest.mark.parametrize("start,end", [(-1, 2), (0, float("nan")), (0, float("inf"))])
+def test_invalid_timestamps_are_rejected(start, end):
+    with pytest.raises(ValueError):
+        R.annotation_rows("clip-a", "bob", [_interval(start_s=start, end_s=end)])
+
+
+def test_thai_reason_roundtrips_and_old_reason_is_cleared(tmp_path):
+    out = tmp_path / "second.csv"
+    rows = R.annotation_rows("clip-a", "bob", [_interval(behavior="Uncertain", uncertain_reason="มองไม่เห็นตัวสัตว์")])
+    R.replace_rows(out, "clip-a", "bob", rows)
+    assert R.read_rows(out)[0]["uncertain_reason"] == "มองไม่เห็นตัวสัตว์"
+    assert R.annotation_rows("clip-a", "bob", [_interval(uncertain_reason="to label")])[0]["uncertain_reason"] == ""
+
+
+@pytest.mark.parametrize("intervals", [[], [_interval(end_s=11)], [_interval(), _interval(start_s=2, end_s=4)]])
+def test_invalid_http_submission_leaves_both_files_untouched(tmp_path, intervals):
+    first, second = tmp_path / "first.csv", tmp_path / "second.csv"
+    first.write_bytes(b"friend's original records")
+    second.write_bytes(b"second review must survive rejected request")
+    handler = object.__new__(R.Handler)
+    handler.server = SimpleNamespace(config=R.Config(
+        clips=[R.Clip("clip-a", Path("video.mp4"), 10)], proposals={},
+        out_file=second, protected=[first],
+    ))
+    handler.path = "/api/verdict"
+    payload = json.dumps({"clip_id": "clip-a", "annotator": "bob", "intervals": intervals}).encode()
+    handler.rfile = io.BytesIO(payload)
+    handler.headers = {"Content-Length": str(len(payload))}
+    responses = []
+    handler._json = lambda data, status=200: responses.append((status, data))
+    handler.do_POST()
+    assert responses[0][0] == 400
+    assert first.read_bytes() == b"friend's original records"
+    assert second.read_bytes() == b"second review must survive rejected request"
+
+
+@pytest.mark.parametrize("failure", [ConnectionResetError, ConnectionAbortedError, BrokenPipeError])
+def test_cancelled_video_stream_returns_without_traceback(tmp_path, failure):
+    video = tmp_path / "video.mp4"
+    video.write_bytes(b"video stream")
+    handler = object.__new__(R.Handler)
+    handler.headers = {}
+    handler.send_response = lambda *args: None
+    handler.send_header = lambda *args: None
+    handler.end_headers = lambda: None
+
+    def disconnect(*args):
+        raise failure("browser cancelled")
+
+    handler.wfile = SimpleNamespace(write=disconnect)
+    handler._serve_video(video)
+
+
+def test_http_save_uses_server_output_not_client_supplied_path(tmp_path):
+    first, second = tmp_path / "friend.csv", tmp_path / "second.csv"
+    first.write_bytes(b"friend's unchanged original records")
+    handler = object.__new__(R.Handler)
+    handler.server = SimpleNamespace(config=R.Config(
+        clips=[R.Clip("clip-a", Path("video.mp4"), 10)], proposals={},
+        out_file=second, protected=[first],
+    ))
+    handler.path = "/api/verdict"
+    payload = json.dumps({"clip_id": "clip-a", "annotator": "bob", "out": str(first), "intervals": [_interval()]}).encode()
+    handler.rfile = io.BytesIO(payload)
+    handler.headers = {"Content-Length": str(len(payload))}
+    responses = []
+    handler._json = lambda data, status=200: responses.append((status, data))
+    handler.do_POST()
+    assert responses[0][0] == 200
+    assert R.read_rows(second)[0]["annotator"] == "bob"
+    assert first.read_bytes() == b"friend's unchanged original records"

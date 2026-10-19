@@ -22,14 +22,14 @@ def test_packet_contains_neutral_metadata_and_no_answers(tmp_path):
         "clip_id,relative_path,duration_s,folder_label_weak\nc,Eating/c.mp4,10,Eating\n"
     )
     (root / "data/annotations.csv").write_text("FIRST PASS ANSWERS")
-    for name in ("review.py", "labels.py"):
+    for name in ("review.py", "labels.py", "review_page.html"):
         (root / "scripts" / name).write_text("# review tool\n")
     (root / "GLOSSARY.md").write_text("# Definitions\n")
     out = tmp_path / "packet"
     assert prepare_gold_review.prepare(root, out) == 1
     files = {p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file()}
     assert files == {
-        "scripts/review.py", "scripts/labels.py", "GLOSSARY.md", "README.md",
+        "scripts/review.py", "scripts/review_page.html", "scripts/labels.py", "GLOSSARY.md", "README.md",
         "data/clips.csv", "data/gold-clips.txt", "data/raw/c.mp4", "start_review.py",
     }
     assert "Eating" not in (out / "data/clips.csv").read_text()

@@ -22,7 +22,10 @@ Python 3.10 or newer is sufficient. Keep the folder in team-approved private
 storage because it contains the supplied footage.
 
 The reviewer runs `python start_review.py` inside that folder and opens
-http://127.0.0.1:8000/. They use one consistent personal identifier, watch all
+http://127.0.0.1:8000/. They enter their name on the page and click Start, use
+Add record, choose the behavior, edit start/end seconds, then Save clip. There
+are also buttons to take start/end from the current video position. Keyboard
+shortcuts remain optional; no browser prompt is needed. They use one consistent personal identifier, watch all
 eight clips, and return `data/annotations-second.csv` along with confirmation
 that they worked independently without viewing existing answers. A script cannot
 establish independence merely from different names. If the reviewer has already
@@ -31,6 +34,18 @@ seen those answers, choose another person and disclose that exposure.
 The generator refuses an existing output directory to protect work in progress.
 Use `--out outputs/gold-review-new` for a fresh packet. Generated videos and
 review packets remain ignored by Git; commit the returned CSV only after review.
+
+Keep the same output location when resuming. The launcher writes only
+`data/annotations-second.csv` inside the packet and protects the repository's
+first-pass `data/annotations.csv` when the packet is under `outputs/`. Saves use
+an atomic replacement and keep the previous second-pass file as `.csv.bak`.
+Invalid or overlapping intervals are rejected before writing. A browser cancelling
+a video request while seeking or closing the page no longer produces a traceback.
+The page warns before leaving unsaved work; unsaved intervals are not a saved draft.
+To load upgraded code in an existing packet, copy only `scripts/review.py` and
+`scripts/review_page.html` and update the launcher; preserve its entire `data/`
+directory. Stop and restart the server after saving current work, then refresh
+the page. Do not regenerate or replace an in-progress review folder.
 
 ## Receive and compare the independent pass
 
