@@ -402,6 +402,8 @@ PAGE = Path(__file__).with_name("review_page.html").read_text(encoding="utf-8")
 # The page's number keys follow labels.ALL_LABELS, so a label added there needs no
 # second edit in the JavaScript.
 PAGE = PAGE.replace("__BEHAVIORS__", json.dumps(list(BEHAVIORS)))
+TRANSLATIONS = json.loads(Path(__file__).with_name("review_i18n.json").read_text(encoding="utf-8"))
+PAGE = PAGE.replace("__TRANSLATIONS__", json.dumps(TRANSLATIONS, ensure_ascii=True))
 
 
 # --- driver ------------------------------------------------------------------

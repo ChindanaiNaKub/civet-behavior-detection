@@ -16,7 +16,7 @@ def review_arguments(root: Path, port: int | None, no_browser: bool) -> list[str
     """Absolute paths work on either OS and from any current directory."""
     root = root.resolve()
     required = [root / name for name in (
-        "scripts/review.py", "scripts/review_page.html", "scripts/labels.py",
+        "scripts/review.py", "scripts/review_page.html", "scripts/review_i18n.json", "scripts/labels.py",
         "data/clips.csv", "data/gold-clips.txt", "data/raw",
     )]
     missing = [str(path.relative_to(root)) for path in required if not path.exists()]

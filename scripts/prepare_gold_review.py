@@ -33,6 +33,7 @@ def prepare(root: Path, out: Path) -> int:
     (out / "data/raw").mkdir(parents=True)
     shutil.copyfile(root / "scripts/review.py", out / "scripts/review.py")
     shutil.copyfile(root / "scripts/review_page.html", out / "scripts/review_page.html")
+    shutil.copyfile(root / "scripts/review_i18n.json", out / "scripts/review_i18n.json")
     # The server only needs these contracts. Omit model metadata and comments
     # about which behaviors have been found in the existing first pass.
     (out / "scripts/labels.py").write_text(
