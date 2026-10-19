@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="th">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Civet · ตรวจพฤติกรรม</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#111923;color:#e8eef5}*{box-sizing:border-box}body{margin:0 auto;padding:24px;max-width:1100px}h1{font-size:24px;margin:0 0 8px}p{color:#b5c3d3}section,fieldset{border:1px solid #344454;border-radius:12px;padding:16px;margin:14px 0;background:#192431}button,input,select{font:inherit;border:1px solid #526579;border-radius:7px;padding:9px;background:#233345;color:inherit}button{cursor:pointer}button:hover{background:#354b63}button:disabled{opacity:.4;cursor:default}.primary{background:#196f62}label{display:flex;flex-direction:column;gap:6px}input[type=number]{width:100%}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}video{display:block;width:100%;max-height:52vh;background:#000;border-radius:8px}#message{min-height:24px;color:#ffd194;white-space:pre-wrap}#status{font-weight:600}#strip{height:38px;position:relative;background:#0d141c;margin:12px 0;overflow:hidden;border-radius:6px}.block{position:absolute;top:3px;height:32px;overflow:hidden;color:#111;font-size:11px;padding:4px;border:0;border-radius:3px}.selected{outline:2px solid white;outline-offset:-2px}#playhead{position:absolute;top:0;height:100%;width:2px;background:#ff5a6c;pointer-events:none}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #344454}tr.active{background:#30455a}tbody tr{cursor:pointer}.table-wrap{overflow:auto}#help{font-size:13px;line-height:1.8}#saved{color:#8ed9bf}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #74c8f5}[hidden]{display:none!important}
+</style>
+<h1>Civet · ตรวจพฤติกรรม</h1>
+<p>ดูวิดีโอ แล้วบันทึกพฤติกรรมและช่วงเวลาที่คุณสังเกตเอง</p>
+<form id="identity"><section class="row"><label>ชื่อผู้ตรวจ / Annotator name<input id="annotator" required autocomplete="name"></label><button class="primary" type="submit">เริ่มตรวจ</button></section></form>
+<div id="message" role="status" aria-live="polite"></div>
+<main id="workspace" hidden>
+<section><div class="row"><span id="status"></span><span id="saved"></span></div><p id="mode"></p>
+<video id="player" controls preload="metadata"></video><div id="strip"></div>
+<div class="row"><button id="toggle" type="button">เล่น / หยุด</button><span id="clock">0.00 วินาที</span><button id="add" class="primary" type="button">+ เพิ่ม record ณ เวลานี้</button></div>
+</section>
+<fieldset id="editor" hidden><legend>แก้ไข record ที่เลือก</legend><div class="grid">
+<label>พฤติกรรม<select id="behavior"></select></label>
+<label>เริ่ม (วินาที)<input id="start" type="number" min="0" step="0.01"></label>
+<label>จบ (วินาที)<input id="end" type="number" min="0" step="0.01"></label>
+<label>เหตุผลเมื่อ Uncertain<input id="reason" type="text" placeholder="เช่น มองไม่เห็นตัวสัตว์"></label>
+</div><div class="row" style="margin-top:12px"><button id="set-start" type="button">ใช้เวลาวิดีโอเป็นจุดเริ่ม</button><button id="set-end" type="button">ใช้เวลาวิดีโอเป็นจุดจบ</button><button id="delete" type="button">ลบ record ที่เลือก</button></div></fieldset>
+<section><div class="table-wrap"><table><thead><tr><th>#</th><th>พฤติกรรม</th><th>เริ่ม</th><th>จบ</th><th>เหตุผล</th></tr></thead><tbody id="records"></tbody></table></div><p id="empty">ยังไม่มี record — เลื่อนวิดีโอไปจุดเริ่ม แล้วคลิก “เพิ่ม record”</p></section>
+<div class="row"><button id="save" class="primary" type="button">บันทึกทั้งคลิปและไปถัดไป</button></div>
+<p id="help">ปุ่มลัดเมื่อไม่ได้พิมพ์ในช่อง: Space เล่น/หยุด · N เพิ่ม · ลูกศรซ้าย/ขวาเลือก record · 1 Eating · 2 Locomotion · 3 Resting · 4 Climbing · 5 Transition · 6 Uncertain · R ช่องเหตุผล · D ลบ · Enter บันทึกทั้งคลิป<br>Resting ต้องนิ่งต่อเนื่องอย่างน้อย 5 วินาที เมื่อยืนยันแล้วให้เริ่มช่วงตั้งแต่เริ่มนิ่ง หากมองไม่ชัดใช้ Uncertain พร้อมเหตุผล</p>
+</main>
+<script>
+const KEYS=__BEHAVIORS__,COLORS={Eating:'#8fd694',Locomotion:'#8fb8f0',Resting:'#c9a0dc',Climbing:'#f0b070',Transition:'#ddd',Uncertain:'#f08f8f'};
+const $=id=>document.getElementById(id),fmt=n=>Number(n).toFixed(2);
+let clips=[],clip=null,intervals=[],sel=0,annotator='',dirty=false,saving=false;
+const message=text=>{$('message').textContent=text;};
+async function api(path,options){const response=await fetch(path,options),data=await response.json();if(!response.ok||data.error)throw Error(data.error||'Request failed');return data;}
+const nextClipId=()=>clips.find(c=>!c.verified)?.clip_id;
+KEYS.forEach(label=>{const option=document.createElement('option');option.value=label;option.textContent=label;$('behavior').appendChild(option);});
+async function load(id){
+  message('');dirty=false;
+  if(!id){clip=null;$('player').pause();$('workspace').hidden=true;message('ตรวจครบทุกคลิปแล้ว — บันทึกคำตอบเรียบร้อย');return;}
+  clip=await api('/api/clip?id='+encodeURIComponent(id));
+  intervals=(clip.proposals||[]).map(p=>({...p,uncertain_reason:p.behavior==='Uncertain'?'machine proposal':'',visibility:'unknown',lighting:'unknown',camera_view:'unknown',occlusion:'unknown',notes:''}));
+  sel=0;$('player').src=clip.video_url;$('saved').textContent='';$('workspace').hidden=false;render();
+}
+$('identity').addEventListener('submit',async event=>{
+  event.preventDefault();annotator=$('annotator').value.trim();if(!annotator){message('กรุณากรอกชื่อผู้ตรวจ');return;}
+  try{clips=await api('/api/clips');await load(nextClipId());$('identity').hidden=true;$('add').focus();}catch(error){message(error.message);}
+});
+function render(){
+  $('status').textContent=clip.clip_id+' · '+clips.filter(c=>c.verified).length+'/'+clips.length+' คลิป';
+  $('mode').textContent=clip.blind?'BLIND — ไม่มีคำตอบเดิมหรือคำแนะนำจากเครื่อง':'ตรวจและแก้ไขคำแนะนำจากเครื่อง';
+  $('empty').hidden=intervals.length>0;
+  const tbody=$('records');tbody.replaceChildren();const strip=$('strip');strip.replaceChildren();
+  intervals.forEach((iv,i)=>{
+    const tr=document.createElement('tr');if(i===sel)tr.className='active';
+    [i+1,iv.behavior,fmt(iv.start_s),fmt(iv.end_s),iv.uncertain_reason||''].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
+    tr.onclick=()=>{sel=i;render();};tbody.appendChild(tr);
+    const block=document.createElement('button');block.type='button';block.className='block'+(i===sel?' selected':'');block.style.left=iv.start_s/clip.duration_s*100+'%';block.style.width=Math.max((iv.end_s-iv.start_s)/clip.duration_s*100,.5)+'%';block.style.background=COLORS[iv.behavior];block.textContent=iv.behavior;block.setAttribute('aria-label','เลือก record '+(i+1));block.onclick=()=>{sel=i;render();};strip.appendChild(block);
+  });
+  const marker=document.createElement('div');marker.id='playhead';strip.appendChild(marker);clock();
+  const iv=intervals[sel];$('editor').hidden=!iv;
+  if(iv){$('behavior').value=iv.behavior;$('start').value=fmt(iv.start_s);$('end').value=fmt(iv.end_s);$('reason').value=iv.uncertain_reason||'';$('start').max=clip.duration_s;$('end').max=clip.duration_s;}
+}
+function changed(){dirty=true;$('saved').textContent='ยังไม่บันทึก';message('');render();}
+function add(){
+  if(!clip||saving)return;const t=Number($('player').currentTime.toFixed(2));
+  if(t>=clip.duration_s){message('เลื่อนวิดีโอกลับไปก่อนจบคลิป แล้วเพิ่ม record');return;}
+  intervals.push({start_s:t,end_s:Number(Math.min(t+2,clip.duration_s).toFixed(2)),behavior:'Uncertain',uncertain_reason:'',visibility:'unknown',lighting:'unknown',camera_view:'unknown',occlusion:'unknown',notes:''});sel=intervals.length-1;changed();
+}
+function remove(){if(intervals[sel]&&!saving){intervals.splice(sel,1);sel=Math.max(0,sel-1);changed();}}
+function clock(){const t=$('player').currentTime;$('clock').textContent=fmt(t)+' / '+fmt(clip?.duration_s||0)+' วินาที';const marker=$('playhead');if(marker&&clip)marker.style.left=t/clip.duration_s*100+'%';}
+async function toggle(){try{if($('player').paused)await $('player').play();else $('player').pause();}catch(error){message('เล่นวิดีโอไม่ได้: '+error.message);}}
+$('add').onclick=add;$('delete').onclick=remove;$('toggle').onclick=toggle;
+$('player').addEventListener('timeupdate',clock);
+$('player').addEventListener('error',()=>{if(clip)message('เบราว์เซอร์เล่นวิดีโอนี้ไม่ได้ ลองเปิดหน้าเดียวกันใน Chrome');});
+$('behavior').onchange=()=>{const iv=intervals[sel];if(iv){iv.behavior=$('behavior').value;if(iv.behavior!=='Uncertain')iv.uncertain_reason='';changed();}};
+for(const [id,key] of [['start','start_s'],['end','end_s'],['reason','uncertain_reason']]){
+  $(id).addEventListener('input',()=>{const iv=intervals[sel];if(iv){iv[key]=id==='reason'?$(id).value:($(id).value===''?NaN:Number($(id).value));dirty=true;$('saved').textContent='ยังไม่บันทึก';}});
+  $(id).addEventListener('change',()=>{if(clip)render();});
+}
+for(const [id,key] of [['set-start','start_s'],['set-end','end_s']])$(id).onclick=()=>{if(intervals[sel]){intervals[sel][key]=Number($('player').currentTime.toFixed(2));changed();}};
+async function save(){
+  if(!clip||saving)return;
+  if(!intervals.length){message('เพิ่ม record ก่อนบันทึก');return;}
+  const ordered=[...intervals].sort((a,b)=>a.start_s-b.start_s);
+  for(let i=0;i<ordered.length;i++){const iv=ordered[i];
+    if(!Number.isFinite(iv.start_s)||!Number.isFinite(iv.end_s)||iv.start_s<0||iv.end_s<=iv.start_s||iv.end_s>clip.duration_s+.005){message('ตรวจเวลาเริ่มและจบ: จบต้องมากกว่าเริ่ม และอยู่ภายในคลิป');return;}
+    if(iv.behavior==='Uncertain'&&!iv.uncertain_reason.trim()){message('กรอกเหตุผลให้ทุก record ที่เป็น Uncertain');return;}
+    if(i&&iv.start_s<ordered[i-1].end_s){message('ช่วงเวลาของ record ทับกัน กรุณาปรับก่อนบันทึก');return;}
+  }
+  saving=true;$('save').disabled=true;$('player').pause();
+  try{const result=await api('/api/verdict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clip_id:clip.clip_id,annotator,intervals})});clips.find(c=>c.clip_id===clip.clip_id).verified=result.verified;dirty=false;await load(nextClipId());if(clip)$('add').focus();}
+  catch(error){message('บันทึกไม่สำเร็จ ข้อมูลบนหน้ายังอยู่: '+error.message);}
+  finally{saving=false;$('save').disabled=false;}
+}
+$('save').onclick=save;
+document.addEventListener('keydown',event=>{
+  if(!clip||saving||event.ctrlKey||event.metaKey||event.altKey||['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName))return;
+  if(['BUTTON','VIDEO'].includes(event.target.tagName)&&[' ','Enter'].includes(event.key))return;
+  const key=event.key.toLowerCase(),iv=intervals[sel];
+  if(key===' '){event.preventDefault();toggle();}
+  else if(key==='n')add();else if(key==='d')remove();else if(key==='r'&&iv)$('reason').focus();
+  else if(key==='arrowleft'){event.preventDefault();sel=Math.max(0,sel-1);render();}
+  else if(key==='arrowright'){event.preventDefault();sel=Math.min(intervals.length-1,sel+1);render();}
+  else if(key>='1'&&key<='6'&&iv){iv.behavior=KEYS[Number(key)-1];if(iv.behavior!=='Uncertain')iv.uncertain_reason='';changed();}
+  else if(key==='enter'){event.preventDefault();save();}
+  else if(iv&&[',','.',';',"'"].includes(key)){const field=[',','.'].includes(key)?'start_s':'end_s';iv[field]=Math.min(clip.duration_s,Math.max(0,Number((iv[field]+([',',';'].includes(key)?-.1:.1)).toFixed(2))));changed();}
+});
+window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
+</script>
+</html>

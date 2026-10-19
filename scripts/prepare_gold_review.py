@@ -32,6 +32,7 @@ def prepare(root: Path, out: Path) -> int:
     (out / "scripts").mkdir()
     (out / "data/raw").mkdir(parents=True)
     shutil.copyfile(root / "scripts/review.py", out / "scripts/review.py")
+    shutil.copyfile(root / "scripts/review_page.html", out / "scripts/review_page.html")
     # The server only needs these contracts. Omit model metadata and comments
     # about which behaviors have been found in the existing first pass.
     (out / "scripts/labels.py").write_text(
@@ -55,7 +56,8 @@ def prepare(root: Path, out: Path) -> int:
         "sys.path.insert(0, str(root / 'scripts'))\n"
         "sys.argv = ['review.py', '--clips-file', 'data/clips.csv', "
         "'--only-file', 'data/gold-clips.txt', '--blind-file', 'data/gold-clips.txt', "
-        "'--out', 'data/annotations-second.csv']\n"
+        "'--out', 'data/annotations-second.csv', "
+        "'--protect-file', str(root.parents[1] / 'data/annotations.csv')]\n"
         "runpy.run_path(str(root / 'scripts/review.py'), run_name='__main__')\n",
         encoding="utf-8",
     )
@@ -72,7 +74,8 @@ def prepare(root: Path, out: Path) -> int:
         "seconds and start the interval at inactivity onset once confirmed.\n"
         "3. Run `python start_review.py`, then open http://127.0.0.1:8000/. "
         "Enter your own name consistently for all clips. Watch each whole clip. "
-        "Use the on-screen keyboard instructions to add intervals and save. "
+        "Click Start after entering your name. Use Add record, the behavior selector, "
+        "the start/end time fields, and Save clip. Keyboard shortcuts are optional. "
         "Cover every period you can assess; label obstructed or ambiguous periods "
         "Uncertain instead of guessing.\n"
         "4. Review all eight clips. You can stop and restart; saved clips are skipped. "

@@ -29,6 +29,11 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
+import os
+import shutil
+import tempfile
+import threading
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -41,6 +46,7 @@ import labels
 BEHAVIORS = labels.ALL_LABELS
 CSV_FIELDS = list(labels.ANNOTATION_FIELDS)
 CONDITIONS = ("visibility", "lighting", "camera_view", "occlusion")
+WRITE_LOCK = threading.Lock()
 
 
 # --- pure functions ----------------------------------------------------------
@@ -64,9 +70,11 @@ def annotation_rows(clip_id: str, annotator: str, intervals: list[dict]) -> list
         if behavior not in BEHAVIORS:
             raise ValueError(f"unknown behavior {behavior!r}")
         start, end = float(interval["start_s"]), float(interval["end_s"])
-        if end <= start:
+        if not math.isfinite(start) or not math.isfinite(end) or start < 0 or end <= start:
             raise ValueError(f"end_s must exceed start_s for {behavior} interval")
         reason = str(interval.get("uncertain_reason", "")).strip()
+        if behavior != "Uncertain":
+            reason = ""
         if behavior == "Uncertain" and not reason:
             raise ValueError("Uncertain interval needs an uncertain_reason")
         row = {name: str(interval.get(name) or "unknown") for name in CONDITIONS}
@@ -83,7 +91,7 @@ def read_rows(path: Path) -> list[dict]:
     path = Path(path)
     if not path.exists() or path.stat().st_size == 0:
         return []
-    with path.open(newline="") as handle:
+    with path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         if reader.fieldnames != CSV_FIELDS:
             raise ValueError(f"{path}: header is {reader.fieldnames}, expected {CSV_FIELDS}")
@@ -99,16 +107,38 @@ def replace_rows(path: Path, clip_id: str, annotator: str, rows: list[dict]) -> 
     annotator wrote for the same clip stay, because the gold sample is labelled
     independently by two people (docs/ANNOTATION-GUIDE.md).
     """
+    with WRITE_LOCK:
+        return _replace_rows(path, clip_id, annotator, rows)
+
+
+def _replace_rows(path: Path, clip_id: str, annotator: str, rows: list[dict]) -> int:
     kept = [row for row in read_rows(path) if not (row["clip_id"] == clip_id and row["annotator"] == annotator)]
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     # LF endings match the tracked data/annotations.csv; csv.writer would
     # otherwise emit CRLF and make the file mixed.
-    with path.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(kept + rows)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", newline="", encoding="utf-8", dir=path.parent, delete=False) as handle:
+            temporary = Path(handle.name)
+            writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS, lineterminator="\n")
+            writer.writeheader()
+            writer.writerows(kept + rows)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if path.exists():
+            shutil.copyfile(path, path.with_suffix(path.suffix + ".bak"))
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return len(rows)
+
+
+def check_output(out: Path, protected: list[Path]) -> None:
+    for path in protected:
+        if out.resolve() == path.resolve() or (out.exists() and path.exists() and os.path.samefile(out, path)):
+            raise ValueError(f"output is a protected annotation file: {path}")
 
 
 @dataclass
@@ -148,7 +178,7 @@ def load_proposals(timeline_file: Path) -> dict[str, list[dict]]:
     path = Path(timeline_file)
     if not path.exists():
         return proposals
-    with path.open(newline="") as handle:
+    with path.open(newline="", encoding="utf-8-sig") as handle:
         for row in csv.DictReader(handle):
             proposals.setdefault(row["clip_id"], []).append(
                 {
@@ -211,6 +241,7 @@ class Config:
     out_file: Path = Path("data/annotations.csv")
     redo: set[str] = field(default_factory=set)
     saved: set[str] = field(default_factory=set)
+    protected: list[Path] = field(default_factory=list)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -279,15 +310,28 @@ class Handler(BaseHTTPRequestHandler):
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
             clip_id = str(body.get("clip_id", ""))
-            if self._clip(clip_id) is None:
+            clip = self._clip(clip_id)
+            if clip is None:
                 self._json({"error": "unknown clip"}, 404)
                 return
             annotator = str(body.get("annotator", "")).strip()
             rows = annotation_rows(clip_id, annotator, body.get("intervals", []))
+            if not rows:
+                raise ValueError("add at least one interval before saving")
+            ordered = sorted(rows, key=lambda row: float(row["start_s"]))
+            if any(float(row["end_s"]) > clip.duration_s + 0.005 for row in ordered):
+                raise ValueError("interval ends beyond the clip duration")
+            if any(float(b["start_s"]) < float(a["end_s"]) for a, b in zip(ordered, ordered[1:])):
+                raise ValueError("intervals must not overlap")
+            check_output(self.config.out_file, self.config.protected)
         except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             self._json({"error": str(exc)}, 400)
             return
-        replace_rows(self.config.out_file, clip_id, annotator, rows)
+        try:
+            replace_rows(self.config.out_file, clip_id, annotator, rows)
+        except OSError as exc:
+            self._json({"error": f"Could not save; existing records retained: {exc}"}, 500)
+            return
         self.config.saved.add(clip_id)
         counts = verified_counts(self.config.out_file)
         reviewed = self._reviewed(counts)
@@ -319,84 +363,16 @@ class Handler(BaseHTTPRequestHandler):
                 chunk = handle.read(min(1 << 16, remaining))
                 if not chunk:
                     break
-                self.wfile.write(chunk)
+                try:
+                    self.wfile.write(chunk)
+                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+                    return  # Seeking or closing the player cancels this stream.
                 remaining -= len(chunk)
 
 
 # --- page --------------------------------------------------------------------
 
-PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>civet interval review</title><style>
-body{font:14px/1.4 system-ui,sans-serif;margin:1rem;background:#181818;color:#eee}
-video{width:100%;max-height:60vh;background:#000}
-#strip{position:relative;height:44px;background:#2a2a2a;border:1px solid #444;margin:.5rem 0}
-.blk{position:absolute;top:4px;height:36px;overflow:hidden;border-radius:3px;font-size:11px;line-height:36px;text-align:center;color:#111;cursor:pointer}
-.blk.sel{outline:2px solid #fff;z-index:2}#play{position:absolute;top:0;width:2px;height:100%;background:#f33;pointer-events:none}
-table{border-collapse:collapse;width:100%}td,th{border:1px solid #444;padding:2px 4px;font-size:12px}
-.badge{background:#b33;padding:2px 6px;border-radius:3px}#help,#status{color:#bbb;white-space:pre-wrap;margin:.4rem 0}
-</style></head><body>
-<h3>civet interval review</h3><div id="status"></div>
-<video id="player" controls preload="metadata"></video><div id="strip"></div>
-<div id="help"></div>
-<table id="list"><thead><tr><th>#</th><th>behavior</th><th>start_s</th><th>end_s</th><th>reason</th></tr></thead><tbody></tbody></table>
-<script>
-const COLORS={Eating:"#8fd694",Locomotion:"#8fb8f0",Resting:"#c9a0dc",Climbing:"#f0b070",Transition:"#ddd",Uncertain:"#f08f8f"};
-const KEYS=__BEHAVIORS__;
-const HELP="space play/pause | left/right select interval | 1-6 set behavior | , . start -/+0.1 | ; ' end -/+0.1 | n add at playhead | d delete selected | r set uncertain reason | Enter accept + save + next clip | p skip clip";
-let clips=[],clip=null,intervals=[],sel=0,annotator="";
-const $=id=>document.getElementById(id),fmt=n=>n.toFixed(2),api=async(p,o)=>(await fetch(p,o)).json();
-const reviewedCount=()=>clips.filter(c=>c.verified>0).length;
-const nextClipId=()=>{const c=clips.find(x=>x.verified===0);return c?c.clip_id:null;};
-async function start(){
-  annotator=prompt("Annotator name:")||"";
-  if(!annotator.trim()){alert("An annotator name is required.");return start();}
-  clips=await api("/api/clips");load(nextClipId());
-}
-async function load(clip_id){
-  if(!clip_id){$("status").textContent="all clips reviewed";$("help").textContent="";return;}
-  clip=await api("/api/clip?id="+encodeURIComponent(clip_id));
-  intervals=(clip.proposals||[]).map(p=>({start_s:p.start_s,end_s:p.end_s,behavior:p.behavior,visibility:"unknown",lighting:"unknown",camera_view:"unknown",occlusion:"unknown",notes:"",uncertain_reason:p.behavior==="Uncertain"?"machine proposal":""}));
-  sel=0;$("player").src=clip.video_url;render();
-}
-function render(){
-  $("status").innerHTML=clip.clip_id+(clip.blind?' <span class="badge">BLIND</span>':"")+" — "+reviewedCount()+"/"+clips.length+" clips reviewed";
-  const dur=clip.duration_s||1,strip=$("strip");strip.innerHTML="";
-  intervals.forEach((iv,i)=>{const b=document.createElement("div");b.className="blk"+(i===sel?" sel":"");
-    b.style.left=iv.start_s/dur*100+"%";b.style.width=Math.max((iv.end_s-iv.start_s)/dur*100,.5)+"%";
-    b.style.background=COLORS[iv.behavior]||"#999";b.textContent=iv.behavior;b.onclick=()=>{sel=i;render();};strip.appendChild(b);});
-  const ph=document.createElement("div");ph.id="play";ph.style.left=(($("player").currentTime||0)/dur*100)+"%";strip.appendChild(ph);
-  const tb=$("list").querySelector("tbody");tb.innerHTML="";
-  intervals.forEach((iv,i)=>{const tr=document.createElement("tr");tr.style.background=i===sel?"#333":"";
-    tr.innerHTML="<td>"+(i+1)+"</td><td>"+iv.behavior+"</td><td>"+fmt(iv.start_s)+"</td><td>"+fmt(iv.end_s)+"</td><td>"+(iv.uncertain_reason||"")+"</td>";
-    tr.onclick=()=>{sel=i;render();};tb.appendChild(tr);});
-  $("help").textContent=HELP;
-}
-async function save(){
-  if(!intervals.length){alert("Add at least one interval before saving.");return;}
-  const res=await api("/api/verdict",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({clip_id:clip.clip_id,annotator:annotator,intervals:intervals})});
-  if(res.error){alert("Rejected: "+res.error);return;}
-  const c=clips.find(x=>x.clip_id===clip.clip_id);if(c)c.verified=res.verified;load(nextClipId());
-}
-$("player").addEventListener("timeupdate",()=>{const p=document.getElementById("play");if(p&&clip)p.style.left=($("player").currentTime/clip.duration_s*100)+"%";});
-document.addEventListener("keydown",e=>{
-  if(!clip||e.target.tagName==="INPUT")return;
-  const iv=intervals[sel],nudge=(k,d)=>{if(iv){iv[k]=Math.max(0,+(iv[k]+d).toFixed(2));render();}};
-  if(e.key===" "){e.preventDefault();const v=$("player");v.paused?v.play():v.pause();}
-  else if(e.key==="ArrowLeft"){sel=Math.max(0,sel-1);render();}
-  else if(e.key==="ArrowRight"){sel=Math.min(intervals.length-1,sel+1);render();}
-  else if(e.key>="1"&&e.key<="6"&&iv){iv.behavior=KEYS[+e.key-1];if(iv.behavior==="Uncertain"&&!iv.uncertain_reason)iv.uncertain_reason="unspecified";render();}
-  else if(e.key===",")nudge("start_s",-0.1);
-  else if(e.key===".")nudge("start_s",0.1);
-  else if(e.key===";")nudge("end_s",-0.1);
-  else if(e.key==="'")nudge("end_s",0.1);
-  else if(e.key==="d"&&iv){intervals.splice(sel,1);sel=Math.max(0,sel-1);render();}
-  else if(e.key==="r"&&iv){const r=prompt("Uncertain reason:",iv.uncertain_reason||"");if(r!==null){iv.uncertain_reason=r;render();}}
-  else if(e.key==="n"){const t=+$("player").currentTime;intervals.push({start_s:+t.toFixed(2),end_s:+(t+2).toFixed(2),behavior:"Uncertain",uncertain_reason:"to label",visibility:"unknown",lighting:"unknown",camera_view:"unknown",occlusion:"unknown",notes:""});sel=intervals.length-1;render();}
-  else if(e.key==="Enter"){e.preventDefault();save();}
-  else if(e.key==="p")load(nextClipId());
-});
-start();
-</script></body></html>"""
+PAGE = Path(__file__).with_name("review_page.html").read_text(encoding="utf-8")
 
 # The page's number keys follow labels.ALL_LABELS, so a label added there needs no
 # second edit in the JavaScript.
@@ -412,6 +388,7 @@ def main() -> int:
     parser.add_argument("--raw", type=Path, default=Path("data/raw"))
     parser.add_argument("--timeline", type=Path, default=Path("outputs/prelabel/timeline.csv"))
     parser.add_argument("--out", type=Path, default=Path("data/annotations.csv"))
+    parser.add_argument("--protect-file", action="append", type=Path, default=[], help="refuse to write to this annotation file")
     parser.add_argument("--blind", action="append", default=[], metavar="CLIP_ID")
     parser.add_argument("--blind-file", type=Path)
     parser.add_argument("--only", action="append", default=[], metavar="CLIP_ID", help="serve only these clips")
@@ -421,6 +398,10 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--counts", action="store_true", help="print per-clip verified row counts and exit")
     args = parser.parse_args()
+    try:
+        check_output(args.out, args.protect_file)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     clips = load_clips(args.clips_file, args.raw)
     known = {clip.clip_id for clip in clips}
@@ -440,7 +421,7 @@ def main() -> int:
         print(f"reviewed {sum(1 for c in clips if counts.get(c.clip_id))}/{len(clips)} clips -> {args.out}")
         return 0
 
-    config = Config(clips=clips, proposals=load_proposals(args.timeline), blind=blind, out_file=args.out, redo=redo)
+    config = Config(clips=clips, proposals=load_proposals(args.timeline), blind=blind, out_file=args.out, redo=redo, protected=args.protect_file)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     server.config = config
     print(f"review http://127.0.0.1:{args.port}/  ({len(clips)} clips, {len(blind)} blind) -> {args.out}")
