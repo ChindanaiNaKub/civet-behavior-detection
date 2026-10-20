@@ -51,3 +51,16 @@ def test_a_clip_labelled_in_only_one_file_is_reported_not_compared():
     rows, orphans = A.compare([row("c1", 0, 5, "Eating")], [row("c2", 0, 5, "Eating", "b")])
     assert rows == []
     assert orphans == ["c1 only in the first file", "c2 only in the second file"]
+
+
+def test_the_ledger_round_trips_dashes_and_thai_text(tmp_path):
+    path = tmp_path / "agreement.csv"
+    row = {name: "" for name in ("clip_id", "annotator_a", "annotator_b", "intervals_compared", "matching_labels",
+                                 "matching_boundaries", "disagreements", "resolved_labels", "resolution_reason",
+                                 "reviewed_by", "reviewed_at")}
+    row.update(clip_id="c1", resolved_labels="Eating 5.53\u201342.10", resolution_reason="ตัดสินตามคู่มือ \u2014 both agree")
+    A.write_ledger(path, [row])
+    loaded = A.review_ledger(path)
+    assert loaded[0]["resolved_labels"] == "Eating 5.53\u201342.10"
+    assert loaded[0]["resolution_reason"] == "ตัดสินตามคู่มือ \u2014 both agree"
+    assert not path.with_suffix(".csv.tmp").exists()

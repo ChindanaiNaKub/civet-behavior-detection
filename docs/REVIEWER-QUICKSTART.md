@@ -1,93 +1,172 @@
-# เริ่มตรวจพฤติกรรม: Windows และ Fedora Linux
+# Behavior review quickstart: Windows and Fedora Linux
 
-ใช้ Python 3.10 ขึ้นไปกับเบราว์เซอร์ ไม่ต้องติดตั้ง PyTorch หรือแพ็กเกจฝึกโมเดล
-สำหรับหน้าตรวจนี้ ใช้ชุดตรวจที่เตรียมไว้แล้วทั้งโฟลเดอร์ และอย่าย้ายเฉพาะไฟล์วิดีโอออกมา
+Use Python 3.10 or newer and a browser. The review tool does not require PyTorch
+or model-training packages. Keep the prepared review packet together as a folder;
+do not move the video files out of it.
 
-## เปิดโปรแกรม
+## Start the tool
 
-เปิด terminal ในโฟลเดอร์ชุดตรวจที่มี `start_review.py`:
+### Add observation conditions to saved answers
 
-| ระบบ | คำสั่ง |
+The review page has four required dropdowns for each interval. Select an interval
+row, then choose a value in every menu before saving. The page checks every
+interval, and the server rejects missing or unsupported values as well.
+
+| Field | Choices |
+|---|---|
+| `visibility` | Clear; partial; fully hidden behind an obstruction; out of view; cannot determine |
+| `lighting` | Daylight/color; infrared/grayscale; cannot determine |
+| `camera_view` | Elevated oblique (looking down at an angle); overhead (straight down); animal-level side view (horizontal); cannot determine |
+| `occlusion` | None; tree/plant/planter; fence/mesh; enclosure structure; multiple obstructions; cannot determine |
+
+These choices were informed by eight sampled frames from each of the 22 clips;
+see [Observation condition options](OBSERVATION-CONDITIONS.md) for the evidence
+and definitions. Camera view describes the viewing angle, not camera identity.
+Record conditions for the selected interval from the video. If the relevant
+condition changes, split the interval as needed rather than guessing one value.
+
+Every menu starts with **Select an option…**. **Cannot determine from the video**
+is a deliberate choice stored as `unknown`, not an automatic default. When
+editing existing answers, legacy `unknown` or unsupported values are left
+unselected so the reviewer must assess them. Known supported values are retained.
+These fields are included in browser drafts and written to the CSV when you click
+**Save clip and continue**. Old drafts with automatic defaults must be checked
+again; newly selected choices, including cannot determine, survive draft restore.
+
+To add conditions to an existing second-pass submission, preserve the original
+in Git or as a separate copy first. Then run this command from the project root
+(not from the review packet sent to the reviewer):
+
+```powershell
+python scripts/review.py --edit-existing --out data/annotations-second.csv --only-file data/gold-clips.txt --protect-file data/annotations.csv --port 8001
+```
+
+Open `http://127.0.0.1:8001/` and enter the exact annotator name used in the
+original CSV. The tool loads that person's saved behaviors, time ranges, reasons,
+notes, and conditions for editing. It does not show machine proposals or another
+person's answers. Saving replaces only the rows for that clip and annotator.
+The previous file is retained as `.csv.bak`; this is a backup of the latest save,
+not a complete revision history. A mismatched name or a clip with no saved
+answers produces an error.
+
+This edits an existing submission; it is not a new blind pass. It cannot be
+combined with `--blind` or `--blind-file`. Preserve the original independent
+submission, and leave behaviors and time ranges unchanged when only adding
+conditions. If a label or time range needs correction, record the change during
+reconciliation as well. Normal blind mode still starts with empty answers and
+does not load saved answers.
+
+For a packet prepared before this change, save your work and stop the server.
+Update `review.py`, `review_page.html`, and `review_i18n.json` in the packet's
+`scripts/` folder, then restart the server and refresh the page. Preserve the
+entire existing `data/` folder.
+
+### Start an independent review
+
+Open a terminal in the review packet folder containing `start_review.py`:
+
+| System | Command |
 |---|---|
 | Windows / PowerShell | `python start_review.py` |
 | Fedora / Linux | `python3 start_review.py` |
 
-เบราว์เซอร์หลักจะเปิดให้เอง ถ้าไม่เปิด ให้คัดลอก URL ที่ terminal แสดงไปเปิดเอง
-โปรแกรมจะลองพอร์ต 8000 ก่อน ถ้ามีโปรแกรมอื่นใช้แล้วจะเลือกพอร์ตว่างใหม่
-ใช้ URL ที่แสดงจริง ไม่จำเป็นต้องเป็น 8000 ทุกครั้ง เปิด terminal ค้างไว้ระหว่างตรวจ
-หยุดโปรแกรมด้วย Ctrl+C
+Your default browser opens automatically. If it does not, open the URL printed
+in the terminal. The tool tries port 8000 first and chooses a free port if another
+program is using it. Use the URL actually printed; it may use a different port.
+Keep the terminal open during review. Stop the tool with Ctrl+C.
 
-ทางเลือกสำหรับ Fedora เครื่องที่ไม่มีหน้าจอ หรือผู้พัฒนาที่ต้องการเลือกพอร์ต:
+For Fedora, a machine without a desktop, or a developer choosing a port:
 
 ```sh
 python3 start_review.py --no-browser --port 9000
 python3 start_review.py --check
 ```
 
-`--check` ตรวจความครบของโฟลเดอร์โดยไม่เปิดเซิร์ฟเวอร์และไม่เขียนคำตอบ
-ถ้าระบุพอร์ตเองแล้วพอร์ตไม่ว่าง ให้ใช้ `--port 0` เพื่อให้ระบบเลือกพอร์ตให้
-โปรแกรมฟังเฉพาะบนเครื่องตัวเอง ไม่เปิดให้เครื่องอื่นในเครือข่ายเข้ามา
+`--check` validates the packet without starting a server or writing answers.
+If a port you selected is busy, use `--port 0` to let the system choose one.
+The server listens only on your own machine and is not accessible to other
+machines on the network.
 
-## ตรวจหนึ่งคลิป
+## Review one clip
 
-หน้าเว็บเริ่มเป็นภาษาอังกฤษ เลือก **English / ไทย** ที่มุมบนเพื่อเปลี่ยนได้ทันที
-ทั้งก่อนและระหว่างตรวจ การเปลี่ยนภาษาไม่แก้ชื่อผู้ตรวจ เวลา พฤติกรรม หรือเหตุผลที่กรอก
-เมื่อเปิด/รีเฟรชหน้าใหม่ ภาษาจะเริ่มเป็นอังกฤษอีกครั้ง โดยฉบับร่างยังคงกู้คืนได้ตามเดิม
+The page starts in English. Use the language selector at the top to switch
+between English and Thai before or during review. Switching languages does not
+change the annotator name, time ranges, behavior codes, or reasons you entered.
+Opening or refreshing the page resets the display language to English; eligible
+browser drafts can still be restored.
 
-1. กรอกชื่อผู้ตรวจให้เหมือนเดิมทุกครั้ง แล้วกด **เริ่มตรวจ** ดูคลิปให้จบหนึ่งรอบก่อน
-2. เลื่อนวิดีโอไปจุดที่พฤติกรรมเริ่ม คลิก **1. กำหนดจุดเริ่ม**
-3. เล่นหรือเลื่อนไปจุดที่พฤติกรรมนั้นจบ คลิก **2. กำหนดจุดจบ** วิดีโอจะหยุดให้
-4. เลือกพฤติกรรมจากรายการ หากเลือก Uncertain ให้กรอกเหตุผลที่ระบุไม่ได้
-5. ทำซ้ำกับช่วงถัดไป ตรวจแถวในตารางให้เวลาไม่ทับกัน สามารถคลิกแถวเพื่อแก้เวลา/พฤติกรรม
-6. เมื่อครบทั้งคลิป คลิก **บันทึกทั้งคลิปและไปถัดไป** โปรแกรมจึงเขียนคำตอบลงไฟล์
+1. Enter the same annotator name each time and click **Start review**. Watch the
+   entire clip once before labeling.
+2. Seek to the start of a behavior and click **1. Mark start**.
+3. Play or seek to its end and click **2. Mark end**. The video pauses.
+4. Choose a behavior. The reason field is enabled and required only for Uncertain.
+   For other behaviors it is disabled and blank; switching away from Uncertain
+   clears the reason. For Uncertain, explain why you cannot identify it. Fill in
+   the observation conditions for the selected interval. Add optional **Notes**
+   for other observations or boundary decisions. Notes are saved as entered,
+   including Thai text and line breaks; they do not replace an Uncertain reason.
+5. Repeat for the remaining intervals. Check that the table has no overlapping
+   times. Click a row to edit its times, behavior, or conditions.
+6. When the entire clip is complete, click **Save clip and continue** to write
+   the answers to the file.
 
-ตัวเลือกพฤติกรรมมีคำอธิบายภาษาไทยบนหน้าเว็บ Resting ต้องนิ่งต่อเนื่องอย่างน้อย
-5 วินาที เมื่อยืนยันครบแล้วให้เริ่มช่วงตั้งแต่เริ่มนิ่ง หากมองไม่เห็นให้ใช้ Uncertain
-พร้อมเหตุผล ไม่เดาจากชื่อคลิปหรือคำตอบของผู้ตรวจคนแรก
+Behavior choices include descriptions in the selected language. Resting requires
+at least five continuous seconds of inactivity. Once confirmed, mark the interval
+from the start of inactivity. If the animal or behavior cannot be seen clearly,
+use Uncertain with a reason. Do not infer behavior from the clip name or the
+first annotator's answers.
 
-ปรับความเร็วการเล่นได้โดยไม่เปลี่ยนเวลาต้นฉบับ หากต้องการพิมพ์เวลาเอง คลิก
-**เพิ่ม record ด้วยการกรอกเวลา** ปุ่มลัดเป็นทางเลือก จึงใช้งานด้วยเมาส์ได้ทั้งหมด
+Playback speed can be changed without changing source timestamps. To type times
+manually, click **+ Add interval manually**. Keyboard shortcuts are optional;
+the full workflow can be completed with the mouse.
 
-## พักแล้วกลับมาทำต่อ
+## Pause and resume
 
-ฉบับร่างเก็บอัตโนมัติในเบราว์เซอร์เดิม โดยแยกตามชุดตรวจ ชื่อผู้ตรวจ และคลิป
-หากรีเฟรชหรือกลับมาที่คลิปเดิม ระบบจะกู้ฉบับร่างให้ตรวจอีกครั้ง แต่ **ฉบับร่างยังไม่ใช่
-คำตอบใน CSV** ต้องกดบันทึกทั้งคลิปก่อนส่งงาน
+Drafts are stored automatically in the same browser, scoped to the review
+submission, annotator name, and clip. Refreshing or returning to the same clip
+restores an available draft for checking. **A draft is not a CSV submission**;
+save the entire clip before handing in your work.
 
-กลับมาโดยใช้เบราว์เซอร์เดิม URL/พอร์ตเดิม และชื่อผู้ตรวจเดิม การเปลี่ยนเบราว์เซอร์
-เปลี่ยนพอร์ต ล้างข้อมูลเว็บไซต์ หรือใช้โหมดส่วนตัว อาจทำให้เข้าถึงฉบับร่างเดิมไม่ได้
-หาก terminal ปิดหรือโปรแกรมหยุด ให้เปิดด้วยคำสั่งเดิมก่อน คลิปที่บันทึกลงไฟล์แล้วจะถูกข้าม
+Resume with the same browser, URL/port, and annotator name. Changing browsers or
+ports, clearing site data, or using private browsing may make the original draft
+unavailable. If the terminal closes or the tool stops, start it again with the
+same command. In normal review mode, clips already saved to the file are skipped.
 
-คำตอบของคุณอยู่ใน `data/annotations-second.csv` **ภายในชุดตรวจของคุณ**
-สำรองก่อนการบันทึกครั้งล่าสุดอยู่ที่ `data/annotations-second.csv.bak`
-อย่าคัดลอกคำตอบทับ `data/annotations.csv` ของเพื่อน ส่งเฉพาะไฟล์ของคุณกลับเมื่อครบ
+Your answers are in `data/annotations-second.csv` **inside your review packet**.
+The backup from the latest save is `data/annotations-second.csv.bak`.
+Do not overwrite another person's `data/annotations.csv`. Return only your own
+CSV when all clips are complete.
 
-## เมื่อวิดีโอไม่เล่นบน Fedora / Firefox
+## If video does not play on Fedora / Firefox
 
-Firefox ใช้ส่วนรองรับวิดีโอของระบบ การเล่น MP4/H.264 จึงขึ้นกับ codec ที่ติดตั้ง
-ในเครื่อง การมี OpenH264 สำหรับวิดีโอคอลเพียงอย่างเดียวไม่ได้รับประกันการเล่น MP4
-ดู [คู่มือรูปแบบวิดีโอของ Mozilla](https://support.mozilla.org/en-US/kb/audio-and-video-firefox)
-และ [แนวทางวิดีโอของ Fedora](https://fedoraproject.org/wiki/Firefox_Hardware_acceleration)
-สำหรับการตรวจการติดตั้งในเครื่องของผู้พัฒนา
+Firefox uses the system's video support, so MP4/H.264 playback depends on the
+installed codecs. Having OpenH264 for video calls alone does not guarantee MP4
+playback. See [Mozilla's audio and video guide](https://support.mozilla.org/en-US/kb/audio-and-video-firefox)
+and [Fedora's Firefox video guidance](https://fedoraproject.org/wiki/Firefox_Hardware_acceleration)
+when checking the developer machine's setup.
 
-อีกทางเลือกคือเปิด URL ที่ terminal แสดงในเบราว์เซอร์ที่เล่น MP4 นี้ได้
-บันทึกคลิปปัจจุบันก่อนเปลี่ยนเบราว์เซอร์ เพราะฉบับร่างอยู่เฉพาะเบราว์เซอร์เดิม
-ไฟล์ CSV ที่บันทึกแล้วใช้ร่วมกันได้ทั้ง Windows และ Linux โดยไม่มีการแก้วิดีโอต้นฉบับ
+Alternatively, open the URL printed in the terminal in a browser that can play
+the supplied MP4. Save the current clip before switching browsers, because drafts
+are stored only in the original browser. Saved CSV files work on both Windows
+and Linux without modifying the source videos.
 
-## สำหรับผู้พัฒนา
+## For developers
 
-เตรียมชุดใหม่จาก root ของ repository ด้วย `python3 scripts/prepare_gold_review.py`
-บน Fedora หรือ `python scripts/prepare_gold_review.py` บน Windows
-อย่าสร้างทับชุดที่เริ่มตรวจแล้ว เมื่อต้องอัปเดต ให้อัปเดตเฉพาะโค้ดและ launcher
-โดยเก็บโฟลเดอร์ `data/` ทั้งหมดตามเดิม ต้องอัปเดตไฟล์ `review_i18n.json`
-พร้อม `review.py` และ `review_page.html` ด้วย บันทึกงานค้างก่อนรีสตาร์ตเซิร์ฟเวอร์และรีเฟรชหน้าเว็บ
+Prepare a new packet from the repository root with
+`python3 scripts/prepare_gold_review.py` on Fedora or
+`python scripts/prepare_gold_review.py` on Windows. Do not regenerate a packet
+that already has review work in progress. When upgrading it, update only the code
+and launcher while preserving the entire `data/` folder. Update
+`review_i18n.json` together with `review.py` and `review_page.html`. Save pending
+work before restarting the server and refreshing the browser.
 
-ทดสอบส่วน reviewer โดยไม่ต้องมี GPU หรือดาวน์โหลดโมเดล:
+Test the reviewer without a GPU or model downloads:
 
 ```sh
 python3 -m pytest scripts/test_review.py scripts/test_review_launcher.py scripts/test_gold_review.py scripts/test_agreement.py -q
 ```
 
-ต้องมี pytest สำหรับคำสั่งทดสอบเท่านั้น Workflow `Reviewer compatibility`
-ตรวจบน Fedora container และ Windows แยกกัน การตรวจ Python/HTTP ไม่ได้ยืนยัน codec
-หรือการเล่นวิดีโอจริงของเบราว์เซอร์บนทุกเครื่อง ต้องตรวจการเล่นวิดีโอบน Fedora desktop ด้วย
+Only the test command requires pytest. The `Reviewer compatibility` workflow
+checks Fedora containers and Windows separately. Python/HTTP checks do not
+confirm codec availability or actual browser playback on every machine;
+video playback must also be checked on a Fedora desktop.

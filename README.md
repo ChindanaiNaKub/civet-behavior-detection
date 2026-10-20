@@ -4,7 +4,7 @@ Phase 2 project for building a checkable short-clip behavior-classification base
 
 ## Current status
 
-The pipeline is built and runs end to end, and one annotator has verified intervals for all 22 clips. A baseline checkpoint has been trained on the train split and shown on a validation clip with a validation-selected threshold; see [Baseline training and clip demo](docs/BASELINE-DEMO.md). What is still missing is the gold reconciliation and the test lock, so there is no held-out score yet. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
+The pipeline is built and runs end to end. `data/annotations.csv` covers all 22 clips: the first annotator's verified intervals for the 14 train and validation clips, and the reconciled final intervals for the eight gold clips. The two independent gold passes were compared (Dice 0.597 over the eight clips, in `data/agreement.csv`) and reconciled with `scripts/reconcile.py`. The test set is locked: Gun signed `data/splits.csv` on 2026-10-20 (test windows Eating 7 / Locomotion 2 / Resting 6), and `scripts/split.py` refuses to overwrite a signed ledger. A baseline checkpoint has been trained on the train split and shown on a validation clip with a validation-selected threshold; see [Baseline training and clip demo](docs/BASELINE-DEMO.md). No model has been evaluated on the test split and no reported number exists yet. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
 
 The model classes are Eating, Locomotion and Resting. The brief calls the third class Walking, and the repository calls it Locomotion because the Phase 1 glossary widened it to any movement that changes location. Climbing is out of scope: no Climbing clip was supplied, the two candidate intervals were reviewed and are not climbing, and the instructor confirmed three classes are enough. It stays a valid annotation label that never becomes a model class, and no Climbing work is planned. See [ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md) for the model, [ADR 0005](docs/adr/0005-split-by-clip-not-by-recording-group.md) for the split rule and [ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md) for Climbing.
 
@@ -60,7 +60,7 @@ python3 scripts/windows.py
 python3 scripts/lighting.py
 ```
 
-4. Review `data/splits.csv` and record who locked the test set in `test_locked_by`. Do this before the next step if the numbers are to be reported, because the test set must be fixed before it is read.
+4. Review `data/splits.csv` and record who locked the test set in `test_locked_by`. Do this before the next step if the numbers are to be reported, because the test set must be fixed before it is read. Once a person has signed it, `scripts/split.py` refuses to overwrite the ledger unless it is given `--force-unlock`.
 
 5. Train, then score the locked test set once. The threshold is chosen on the validation windows, and the test videos are decoded and scored once, after the threshold is fixed.
 
@@ -140,6 +140,7 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 - `scripts/prelabel.py` — behavior pre-labeler: Resting from sustained low motion, Locomotion from location change, Eating/Climbing proposed by zero-shot X-CLIP; writes a per-interval timeline CSV for review. Logic checks in `scripts/test_prelabel.py`.
 - `scripts/review.py` — local review page: plays each clip with its proposed intervals and writes verified intervals to `data/annotations.csv`. Supports blind clips for the gold set.
 - `scripts/agreement.py` — compares two independent label passes on the shared sample and writes `data/agreement.csv`.
+- `scripts/reconcile.py` — browser page where the two gold reviewers decide one final set of intervals per gold clip; `--apply` writes `data/agreement.csv` and the final gold rows. Logic checks in `scripts/test_reconcile.py`.
 - `scripts/split.py` — assigns every clip to train, validation or test, checks each split against the verified windows, and writes `data/splits.csv`.
 - `scripts/lighting.py` — fills lighting, visibility and occlusion in `data/annotations.csv` from the footage and the annotator's own reasons.
 - `data/gold-clips.txt` — the eight gold clips, one id per line, also the test split.

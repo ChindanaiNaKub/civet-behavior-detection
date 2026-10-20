@@ -14,9 +14,9 @@ The split stays by whole clip (ADR 0005), but the assignment is now chosen and c
 |---|---:|---|
 | train | 11 | 14 / 5 / 74 |
 | validation | 3 | 10 / 1 / 19 |
-| test (gold) | 8 | 7 / 5 / 6 |
+| test (gold) | 8 | 7 / 2 / 6 |
 
-Two clips moved into test to give it Eating and Resting: `25690519193422801` (Eating, 50 s) and `25690519194200758` (Resting, 31 s). Their intervals were first verified against the proposal. Before the test set can be locked, the first annotator labels them again blind (`--redo`), and the second annotator labels all eight blind. The first annotator's blind pass on those two clips is done, and `split.py` and `windows.py` give the same counts as above on the blind labels. The second annotator's pass is still open.
+Two clips moved into test to give it Eating and Resting: `25690519193422801` (Eating, 50 s) and `25690519194200758` (Resting, 31 s). The gold passes are done: two people labeled the eight clips independently, the passes were reconciled in `scripts/reconcile.py`, and the final intervals are in `data/annotations.csv`. The table shows the windows from those final intervals. Test Locomotion fell from 5 windows (the first annotator's labels alone) to 2, because the reconciled labels mark the stretches where the civet stops, turns or is partly hidden as Transition or Uncertain, and keep Locomotion only where its movement is visible; Eating (7) and Resting (6) are unchanged. Locomotion in test now rests on two windows from two clips.
 
 ## Consequences
 
@@ -24,5 +24,5 @@ Two clips moved into test to give it Eating and Resting: `25690519193422801` (Ea
 - **Locomotion is thin everywhere.** Eleven windows in total, because most Locomotion intervals are shorter than five seconds and a window needs one interval to cover it fully.
 - **Lighting and camera still track the class.** Across the 141 windows, all 99 Resting windows are daylight on Camera 03 and 30 of 31 Eating windows are daylight on Camera 02. Locomotion supplies every infrared window (7 of its 11). A model can score well by recognising the recording rather than the behavior, which is the failure the plumbing run showed (validation macro F1 1.000, test 0.179). The score is an upper bound on generalization to a new recording, as ADR 0005 says.
 - **The blind pass on the two moved clips is weaker.** The first annotator saw the proposal and their own earlier labels for those clips. The second annotator has no such history, which is why the agreement score matters most on them.
-- **Not locked.** `test_locked_by` stays empty until both blind passes exist, the agreement is computed and `split.py` passes on the final labels. `scripts/evaluate.py` must not run before then, because it reads the test windows once.
+- **Locked.** Both gold passes exist, the agreement is computed and reconciled, and `split.py` passes on the final labels, so Gun signed `test_locked_by` and `test_locked_at` on the eight test rows of `data/splits.csv` on 2026-10-20, and reports that the repository owner agreed. `split.py` now refuses to overwrite a signed ledger. `scripts/evaluate.py` does not check the lock itself; it must read the test windows once, after the threshold is chosen on validation.
 - **Fallback.** If the blind labels leave a class with no window, use group-aware cross-validation for development as the plan allows, and report that no held-out estimate is reliable.

@@ -29,12 +29,16 @@ Use this guide to assign one behavior label to each clear interval in a source c
 | `clip_id` | Stable source filename or team-assigned ID. |
 | `start_s`, `end_s` | Start and end time in seconds from the source clip; end must be greater than start. |
 | `behavior` | Eating, Locomotion, Resting, Climbing, Transition, or Uncertain. |
-| `visibility` | Clear, partial, or out of view for the interval. |
+| `visibility` | Clear, partial, fully occluded, out of view, or explicitly unknown for the interval. |
 | `lighting` | Observed condition (for example, daylight or infrared/grayscale) only when visible; otherwise unknown. |
-| `camera_view` | A short description of angle/view, or unknown. Do not infer camera ID. |
-| `occlusion` | None or visible obstruction and its source (for example, fence, plant, or structure). |
+| `camera_view` | Elevated oblique, overhead (straight down), animal-level side view (horizontal), or explicitly unknown. Elevated oblique is the angle observed in the sampled clips; select from the actual video. Do not infer camera ID. |
+| `occlusion` | None, tree/plant, fence/mesh, enclosure structure, multiple obstructions, or explicitly unknown. |
 | `uncertain_reason` | Required when behavior is Uncertain; otherwise blank. |
 | `annotator`, `notes` | Annotator ID and concise evidence or boundary note. |
+
+All four condition dropdowns require a selection for every interval before saving.
+See [Observation condition options](OBSERVATION-CONDITIONS.md) for definitions and
+the 22-clip sampling audit. An unknown value must be chosen explicitly.
 
 Record room, camera ID, session, and capture time only when a source record confirms the value. Use `unknown` instead of inferring them from folder names, numeric filenames, or the proposed four-room/four-camera setting.
 

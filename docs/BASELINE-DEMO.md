@@ -18,7 +18,7 @@ Training selects only the train split and early-stops on the validation split.
 |---|---|
 | Train windows | 93 (Eating 14, Locomotion 5, Resting 74) |
 | Validation windows | 30 (Eating 10, Locomotion 1, Resting 19) |
-| Test windows | 18, never decoded or scored |
+| Test windows | 15 (Eating 7, Locomotion 2, Resting 6), never decoded or scored |
 | Trainable parameters | 3,075 |
 | Requested epochs | 40 |
 | Best epoch | 4 |
@@ -95,7 +95,7 @@ five seconds.
 - The validation-selected threshold is 0.00, so the demo cannot show an
   Uncertain result. Do not read that as calibrated confidence.
 - No test video was decoded and no test window was scored. There is no held-out
-  number yet, and the test set is not locked.
+  number yet. The test set is locked: Gun signed `data/splits.csv` on 2026-10-20.
 
 ## Reproduce
 
@@ -114,9 +114,9 @@ The split ledger is tracked in `data/splits.csv`, so these steps do not need
 because it rewrites the ledger and clears `test_locked_by` and `test_locked_at`.
 After the lock, skip it or restore the lock fields by hand.
 
-The full `python3 scripts/evaluate.py` run is a manual gate on the test lock.
-The script does not enforce the lock, so do not run it until a person fills
-`test_locked_by` in `data/splits.csv`.
+The full `python3 scripts/evaluate.py` run stays a single manual run, because the
+script does not enforce the lock itself. The test set is signed in
+`data/splits.csv`, so issue #6 reads the test windows once.
 
 Check the safety property and the rest of the pipeline logic with:
 

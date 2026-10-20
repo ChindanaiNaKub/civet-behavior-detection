@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import os
 from pathlib import Path
 
 import labels
@@ -131,10 +132,15 @@ def write_ledger(path: Path, rows: list[dict]) -> None:
     fields = ("clip_id", "annotator_a", "annotator_b", "intervals_compared", "matching_labels",
               "matching_boundaries", "disagreements", "resolved_labels", "resolution_reason",
               "reviewed_by", "reviewed_at")
-    with path.open("w", newline="") as handle:
+    # UTF-8 on every platform: the resolution text carries dashes and any language,
+    # and a Windows default code page cannot encode all of it. Write to a temporary
+    # file and replace it, so a failure never leaves a half-written ledger.
+    temporary = path.with_suffix(".csv.tmp")
+    with temporary.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(fields), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
+    os.replace(temporary, path)
 
 
 def main() -> int:
@@ -183,7 +189,7 @@ def main() -> int:
 def review_ledger(path: Path) -> list[dict]:
     if not path.exists():
         return []
-    with path.open(newline="") as handle:
+    with path.open(newline="", encoding="utf-8-sig") as handle:
         return list(csv.DictReader(handle))
 
 
