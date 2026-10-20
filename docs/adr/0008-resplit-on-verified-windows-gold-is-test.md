@@ -14,9 +14,9 @@ The split stays by whole clip (ADR 0005), but the assignment is now chosen and c
 |---|---:|---|
 | train | 11 | 14 / 5 / 74 |
 | validation | 3 | 10 / 1 / 19 |
-| test (gold) | 8 | 7 / 5 / 6 |
+| test (gold) | 8 | 7 / 2 / 6 |
 
-Two clips moved into test to give it Eating and Resting: `25690519193422801` (Eating, 50 s) and `25690519194200758` (Resting, 31 s). Their intervals were first verified against the proposal. Before the test set can be locked, the first annotator labels them again blind (`--redo`), and the second annotator labels all eight blind. The first annotator's blind pass on those two clips is done, and `split.py` and `windows.py` give the same counts as above on the blind labels. The second annotator's pass is still open.
+Two clips moved into test to give it Eating and Resting: `25690519193422801` (Eating, 50 s) and `25690519194200758` (Resting, 31 s). The gold passes are done: two people labeled the eight clips independently, the passes were reconciled in `scripts/reconcile.py`, and the final intervals are in `data/annotations.csv`. The table shows the windows from those final intervals. Test Locomotion fell from 5 windows (the first annotator's labels alone) to 2, because the reconciled labels mark the stretches where the civet stops, turns or is partly hidden as Transition or Uncertain, and keep Locomotion only where its movement is visible; Eating (7) and Resting (6) are unchanged. Locomotion in test now rests on two windows from two clips.
 
 ## Consequences
 
