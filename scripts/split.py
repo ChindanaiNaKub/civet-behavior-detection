@@ -95,6 +95,14 @@ def check(clips: list[dict]) -> None:
             raise SystemExit(f"{split} has no clip for {gap}; group-aware or class-aware split needed")
 
 
+def signed_lock(path: Path) -> list[dict]:
+    """Rows of an existing ledger that a person has signed for the test lock."""
+    if not path.exists():
+        return []
+    with path.open(newline="", encoding="utf-8-sig") as handle:
+        return [row for row in csv.DictReader(handle) if (row.get("test_locked_by") or "").strip()]
+
+
 def window_counts(intervals: list[W.Interval], durations: dict[str, float], assignment: dict[str, list[str]]) -> Counter:
     """Windows per (split, class) that the verified intervals produce under an assignment."""
     splits = {clip_id: split for split, clip_ids in assignment.items() for clip_id in clip_ids}
@@ -115,7 +123,15 @@ def main() -> int:
     parser.add_argument("--source-clips", type=Path, default=Path("data/source-clips.csv"))
     parser.add_argument("--annotations", type=Path, default=Path("data/annotations.csv"))
     parser.add_argument("--out", type=Path, default=Path("data/splits.csv"))
+    parser.add_argument("--force-unlock", action="store_true", help="overwrite a ledger even though a person has signed the test lock")
     args = parser.parse_args()
+
+    signed = signed_lock(args.out)
+    if signed and not args.force_unlock:
+        raise SystemExit(
+            f"{args.out} is signed by {signed[0]['test_locked_by']} at {signed[0]['test_locked_at']}; writing a new ledger "
+            "would erase the test lock. Use --out for a trial run, or --force-unlock to discard the lock on purpose."
+        )
 
     clips = read_ledger(args.source_clips)
     check(clips)
