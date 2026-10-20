@@ -131,6 +131,7 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 - `scripts/prelabel.py` — behavior pre-labeler: Resting from sustained low motion, Locomotion from location change, Eating/Climbing proposed by zero-shot X-CLIP; writes a per-interval timeline CSV for review. Logic checks in `scripts/test_prelabel.py`.
 - `scripts/review.py` — local review page: plays each clip with its proposed intervals and writes verified intervals to `data/annotations.csv`. Supports blind clips for the gold set.
 - `scripts/agreement.py` — compares two independent label passes on the shared sample and writes `data/agreement.csv`.
+- `scripts/reconcile.py` — browser page where the two gold reviewers decide one final set of intervals per gold clip; `--apply` writes `data/agreement.csv` and the final gold rows. Logic checks in `scripts/test_reconcile.py`.
 - `scripts/split.py` — assigns every clip to train, validation or test, checks each split against the verified windows, and writes `data/splits.csv`.
 - `scripts/lighting.py` — fills lighting, visibility and occlusion in `data/annotations.csv` from the footage and the annotator's own reasons.
 - `data/gold-clips.txt` — the eight gold clips, one id per line, also the test split.
