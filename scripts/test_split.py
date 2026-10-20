@@ -55,3 +55,20 @@ def test_uncertain_footage_gives_no_resting_window():
     intervals = [_iv("c", 0.0, 30.0, "Uncertain")]
     counts = S.window_counts(intervals, {"c": 30.0}, {"train": [], "validation": [], "test": ["c"]})
     assert S.verified_gaps(counts)["test"] == list(labels.MODEL_CLASSES)
+
+
+def test_an_unsigned_ledger_has_no_signed_lock(tmp_path):
+    path = tmp_path / "splits.csv"
+    path.write_text("clip_id,split,grouping_key,grouping_evidence,assignment_reason,test_locked_by,test_locked_at\n"
+                    "a,test,k,e,r,,\n")
+    assert S.signed_lock(path) == []
+    assert S.signed_lock(tmp_path / "missing.csv") == []
+
+
+def test_a_signed_ledger_is_reported_so_it_is_not_overwritten(tmp_path):
+    path = tmp_path / "splits.csv"
+    path.write_text("clip_id,split,grouping_key,grouping_evidence,assignment_reason,test_locked_by,test_locked_at\n"
+                    "a,test,k,e,r,Ada,2026-10-20T22:00:00+07:00\nb,train,k,e,r,,\n")
+    signed = S.signed_lock(path)
+    assert [row["clip_id"] for row in signed] == ["a"]
+    assert signed[0]["test_locked_by"] == "Ada"
