@@ -5,6 +5,7 @@ No server, video or GPU: run with `python -m pytest scripts`.
 
 import csv
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -216,3 +217,25 @@ def test_non_gold_rows_are_kept_exactly(tmp_path):
     kept = [r for r in review.read_rows(a) if r["clip_id"] == "n1"]
     R.apply(a, b, ledger, store, gold, "t")
     assert [r for r in review.read_rows(a) if r["clip_id"] == "n1"] == kept
+
+
+def test_both_languages_have_the_same_keys_and_placeholders():
+    english, thai = R.TRANSLATIONS["en"], R.TRANSLATIONS["th"]
+    assert set(english) == set(thai)
+    for key in english:
+        assert sorted(re.findall(r"\{\w+\}", english[key])) == sorted(re.findall(r"\{\w+\}", thai[key])), key
+
+
+def test_every_key_the_page_uses_is_translated():
+    page = Path(R.__file__).with_name("reconcile_page.html").read_text(encoding="utf-8")
+    used = set(re.findall(r'data-i18n(?:-ph)?="(\w+)"', page)) | set(re.findall(r'\bt\("(\w+)"[,)]', page))
+    assert used <= set(R.TRANSLATIONS["en"]), sorted(used - set(R.TRANSLATIONS["en"]))
+
+
+def test_every_behavior_and_condition_value_has_a_label_in_both_languages():
+    for language in ("en", "th"):
+        for behavior in review.BEHAVIORS:
+            assert f"d_{behavior}" in R.TRANSLATIONS[language]
+        for choices in review.CONDITION_OPTIONS.values():
+            for choice in choices:
+                assert f"o_{choice}" in R.TRANSLATIONS[language], choice

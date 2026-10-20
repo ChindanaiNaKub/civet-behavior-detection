@@ -352,6 +352,8 @@ class Handler(BaseHTTPRequestHandler):
 PAGE = Path(__file__).with_name("reconcile_page.html").read_text(encoding="utf-8")
 PAGE = PAGE.replace("__BEHAVIORS__", json.dumps(list(review.BEHAVIORS)))
 PAGE = PAGE.replace("__CONDITION_OPTIONS__", json.dumps(review.CONDITION_OPTIONS))
+TRANSLATIONS = json.loads(Path(__file__).with_name("reconcile_i18n.json").read_text(encoding="utf-8"))
+PAGE = PAGE.replace("__TRANSLATIONS__", json.dumps(TRANSLATIONS, ensure_ascii=True))
 
 
 # --- driver ------------------------------------------------------------------

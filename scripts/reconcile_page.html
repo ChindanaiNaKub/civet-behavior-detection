@@ -7,9 +7,11 @@
 :root{color-scheme:light;--paper:#f4f3ec;--surface:#fcfcf7;--ink:#203c32;--muted:#64746a;--line:#cdd5c9;--forest:#244f3b;--accent:#c2d77b;--danger:#9b3933;--warn:#fff1c9;
 --Eating:#8fd694;--Locomotion:#8fb8f0;--Resting:#c9a0dc;--Climbing:#f0b070;--Transition:#d9d9d2;--Uncertain:#f2a9a0}
 *{box-sizing:border-box}
-body{margin:0;padding:20px 28px 40px;max-width:1500px;margin-inline:auto;background:var(--paper);color:var(--ink);font:14px/1.45 system-ui,"Segoe UI",sans-serif}
-h1{font:600 26px Cambria,Georgia,serif;margin:0 0 4px}h2{font:600 17px Cambria,Georgia,serif;margin:22px 0 8px}
+body{margin:0;padding:20px 28px 40px;max-width:1500px;margin-inline:auto;background:var(--paper);color:var(--ink);font:14px/1.5 system-ui,"Segoe UI","Leelawadee UI",Tahoma,sans-serif}
+h1{font:600 26px Cambria,Georgia,"Leelawadee UI",serif;margin:0 0 4px}h2{font:600 17px Cambria,Georgia,"Leelawadee UI",serif;margin:22px 0 8px}
 p.lede{margin:0 0 14px;color:var(--muted);max-width:90ch}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.lang{display:flex;align-items:center;gap:6px;flex:none}.lang button{padding:3px 10px}.lang button[aria-pressed=true]{background:var(--forest);color:#fff}
 .bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:10px 0}
 input,select,textarea,button{font:inherit;color:inherit}
 input,select,textarea{border:1px solid var(--line);border-radius:5px;padding:4px 6px;background:var(--surface)}
@@ -30,19 +32,20 @@ video{width:100%;max-height:46vh;background:#000;border-radius:6px}
 .blk.dis.short{background:#f4e7bd;border-color:#b89a2c}
 #playhead{position:absolute;top:0;bottom:0;width:2px;background:#d33;pointer-events:none;left:158px}
 table{border-collapse:collapse;width:100%}th,td{border:1px solid var(--line);padding:3px 5px;font-size:12.5px;vertical-align:middle}
-th{background:#ebece3;text-align:left}td input[type=number]{width:78px}td select{max-width:150px}
+th{background:#ebece3;text-align:left}td input[type=number]{width:78px}td select{max-width:170px}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:1000px){.cols{grid-template-columns:1fr}}
 tr.click{cursor:pointer}tr.click:hover{background:#eef2e2}
 .pill{display:inline-block;padding:0 7px;border-radius:9px;border:1px solid rgba(0,0,0,.2);font-size:12px}
 #msg{min-height:1.4em;margin:8px 0;font-weight:600}#msg.bad{color:var(--danger)}#msg.ok{color:var(--forest)}
-.legend span{margin-right:12px;font-size:12px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px}.legend span{font-size:12px}.legend small{color:var(--muted)}
 .note{background:var(--warn);border:1px solid #e0c97a;border-radius:6px;padding:8px 10px;margin:10px 0;max-width:110ch}
 </style>
-<h1>Reconcile the two gold passes</h1>
-<p class="lede">Two people labelled these clips independently. Here you line the passes up with the video and decide <b>one final set of intervals per clip</b>, together, using the annotation guide. The page records what you choose and never decides for you. A clip's final intervals do not touch <code>data/</code> until you run <code>python scripts/reconcile.py --apply</code>.</p>
-<div class="note"><b>Judge by the rules, not by who labelled it.</b> Resting needs 5 s of continuous stillness (counted from its start); Eating needs visible food-directed action; use Uncertain with a reason when the video does not show enough. Where one behavior was split into back-to-back pieces, decide whether it is really one interval: a window needs a single interval to cover it.</div>
-<div class="bar"><b>Reviewers (both must agree):</b>
-<input id="r1" placeholder="Reviewer 1 name"><input id="r2" placeholder="Reviewer 2 name"><button id="saveNames">Save names</button><span id="nameState"></span></div>
+<div class="top"><div><h1 data-i18n="title"></h1>
+<p class="lede" data-i18n="lede"></p></div>
+<div class="lang"><span data-i18n="language"></span><button id="lEn" type="button" aria-pressed="true">English</button><button id="lTh" type="button" aria-pressed="false">ไทย</button></div></div>
+<div class="note" data-i18n="note"></div>
+<div class="bar"><b data-i18n="reviewers"></b>
+<input id="r1" data-i18n-ph="reviewer1"><input id="r2" data-i18n-ph="reviewer2"><button id="saveNames" data-i18n="saveNames"></button><span id="nameState"></span></div>
 <div class="bar"><span id="progress"></span></div>
 <div id="chips"></div>
 <div id="clipArea" hidden>
@@ -52,129 +55,150 @@ tr.click{cursor:pointer}tr.click:hover{background:#eef2e2}
 <div id="lanes">
  <div class="lane"><span class="lname" id="nameA"></span><div class="track" id="tA"></div></div>
  <div class="lane"><span class="lname" id="nameB"></span><div class="track" id="tB"></div></div>
- <div class="lane"><span class="lname">Differences (A vs B)</span><div class="track" id="tD"></div></div>
- <div class="lane"><span class="lname"><b>FINAL (your decision)</b></span><div class="track final" id="tF"></div></div>
+ <div class="lane"><span class="lname" data-i18n="laneDiff"></span><div class="track" id="tD"></div></div>
+ <div class="lane"><span class="lname"><b data-i18n="laneFinal"></b></span><div class="track final" id="tF"></div></div>
  <div id="playhead"></div>
 </div>
 <div class="bar"><span id="clock">0.00 s</span><span id="stats"></span></div>
 
-<h2>Differences to discuss</h2>
-<p class="lede">Red stripes: the two passes give different labels. Yellow: shorter than 0.5 s, usually a boundary shift. Click a row to jump to it.</p>
-<table id="diffT"><thead><tr><th>From</th><th>To</th><th>Length</th><th id="hA"></th><th id="hB"></th></tr></thead><tbody></tbody></table>
+<h2 data-i18n="diffTitle"></h2>
+<p class="lede" data-i18n="diffLede"></p>
+<table id="diffT"><thead><tr><th data-i18n="from"></th><th data-i18n="to"></th><th data-i18n="length"></th><th id="hA"></th><th id="hB"></th></tr></thead><tbody></tbody></table>
 
 <div class="cols">
- <div><h2 id="titleA"></h2><table id="listA"><thead><tr><th>#</th><th>Behavior</th><th>Start</th><th>End</th><th></th></tr></thead><tbody></tbody></table></div>
- <div><h2 id="titleB"></h2><table id="listB"><thead><tr><th>#</th><th>Behavior</th><th>Start</th><th>End</th><th></th></tr></thead><tbody></tbody></table></div>
+ <div><h2 id="titleA"></h2><table id="listA"><thead><tr><th data-i18n="colNo"></th><th data-i18n="behavior"></th><th data-i18n="start"></th><th data-i18n="end"></th><th></th></tr></thead><tbody></tbody></table></div>
+ <div><h2 id="titleB"></h2><table id="listB"><thead><tr><th data-i18n="colNo"></th><th data-i18n="behavior"></th><th data-i18n="start"></th><th data-i18n="end"></th><th></th></tr></thead><tbody></tbody></table></div>
 </div>
 
-<h2>Final intervals for this clip</h2>
-<div class="bar"><button id="fromA">Start from A</button><button id="fromB">Start from B</button><button id="addRow">Add interval</button><button id="clearF">Clear</button>
-<span class="lede" style="margin:0">Copy a row from A or B above, or edit freely. Intervals must not overlap and must stay inside the clip.</span></div>
-<table id="finalT"><thead><tr><th>Behavior</th><th>Start</th><th>End</th><th>Visibility</th><th>Lighting</th><th>Camera view</th><th>Occlusion</th><th>Reason (Uncertain)</th><th></th></tr></thead><tbody></tbody></table>
-<h2>Why</h2>
-<textarea id="reason" rows="3" style="width:100%;max-width:110ch" placeholder="What did you change and why, or: both passes agree. Required for every clip."></textarea>
-<div class="bar"><button class="primary" id="save">Save this clip's decision</button><span id="msg" role="status"></span></div>
+<h2 data-i18n="finalTitle"></h2>
+<div class="bar"><button id="fromA" data-i18n="fromA"></button><button id="fromB" data-i18n="fromB"></button><button id="addRow" data-i18n="addRow"></button><button id="clearF" data-i18n="clear"></button>
+<span class="lede" style="margin:0" data-i18n="finalHint"></span></div>
+<table id="finalT"><thead><tr><th data-i18n="behavior"></th><th data-i18n="start"></th><th data-i18n="end"></th><th data-i18n="visibility"></th><th data-i18n="lighting"></th><th data-i18n="camera_view"></th><th data-i18n="occlusion"></th><th data-i18n="reasonCol"></th><th></th></tr></thead><tbody></tbody></table>
+<h2 data-i18n="whyTitle"></h2>
+<textarea id="reason" rows="3" style="width:100%;max-width:110ch" data-i18n-ph="whyPlaceholder"></textarea>
+<div class="bar"><button class="primary" id="save" data-i18n="save"></button><span id="msg" role="status"></span></div>
 </div>
-<div id="finish" class="note" hidden><b>Every gold clip has a decision.</b> Stop this page, then run <code>python scripts/reconcile.py --apply</code> to write <code>data/agreement.csv</code> and the final gold rows, then <code>scripts/lighting.py</code>, <code>scripts/split.py</code> and <code>scripts/windows.py</code>.</div>
+<div id="finish" class="note" hidden data-i18n="finish"></div>
 <script>
-const BEHAVIORS=__BEHAVIORS__, OPTIONS=__CONDITION_OPTIONS__;
+const BEHAVIORS=__BEHAVIORS__, OPTIONS=__CONDITION_OPTIONS__, TRANSLATIONS=__TRANSLATIONS__;
 const CONDS=["visibility","lighting","camera_view","occlusion"];
 const $=id=>document.getElementById(id), fmt=n=>(+n).toFixed(2);
 const api=async(p,o)=>{const r=await fetch(p,o);return r.json()};
-let state=null, clip=null, final=[], dirty=false;
+let state=null, clip=null, final=[], dirty=false, lang="en", lastMsg=null;
+const t=(k,p)=>{let s=(TRANSLATIONS[lang]&&TRANSLATIONS[lang][k])??TRANSLATIONS.en[k]??k;for(const x in (p||{}))s=s.split("{"+x+"}").join(p[x]);return s};
 const color=b=>`var(--${b})`;
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
-function pill(b){return b?`<span class="pill" style="background:${color(b)}">${esc(b)}</span>`:'<span class="pill" style="background:#eee">not labelled</span>'}
-function say(t,kind){const m=$("msg");m.textContent=t;m.className=kind||""}
-function mark(){dirty=true;say("Unsaved changes.")}
+// Behavior and condition values are stored in English whatever the language; only the labels shown change.
+function pill(b){return b?`<span class="pill" style="background:${color(b)}">${esc(b)}</span>`:`<span class="pill" style="background:#eee">${esc(t("notLabelled"))}</span>`}
+function optLabel(o){const k="o_"+o;return lang==="en"?o:(TRANSLATIONS.th[k]?o+" · "+TRANSLATIONS.th[k]:o)}
+function behLabel(b){return lang==="en"?b:b+" · "+(TRANSLATIONS.th["d_"+b]||"").split(" ")[0]}
+function say(key,params,kind,raw){lastMsg={key,params,kind,raw};showMsg()}
+function showMsg(){const m=$("msg");if(!lastMsg){m.textContent="";m.className="";return}
+  m.textContent=lastMsg.raw?t("serverSays",{text:lastMsg.raw}):(lastMsg.key?t(lastMsg.key,lastMsg.params):"");m.className=lastMsg.kind||""}
+function mark(){dirty=true;say("unsaved")}
+
+function applyStatic(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i18n]").forEach(e=>e.innerHTML=t(e.dataset.i18n));
+  document.querySelectorAll("[data-i18n-ph]").forEach(e=>e.placeholder=t(e.dataset.i18nPh));
+  $("lEn").setAttribute("aria-pressed",lang==="en");$("lTh").setAttribute("aria-pressed",lang==="th");
+  document.title=t("title")+" · Civet";
+  $("legend").innerHTML=BEHAVIORS.map(b=>`<span>${pill(b)} <small>${esc(t("d_"+b))}</small></span>`).join("");
+  if(state){
+    $("nameA").textContent="A: "+state.annotators[0];$("nameB").textContent="B: "+state.annotators[1];
+    $("hA").textContent=t("aSays",{name:state.annotators[0]});$("hB").textContent=t("bSays",{name:state.annotators[1]});
+    $("titleA").textContent=t("passA",{name:state.annotators[0]});$("titleB").textContent=t("passB",{name:state.annotators[1]});
+    drawChips();
+  }
+  if(clip){$("stats").textContent=t("stats",{a:clip.a_intervals,b:clip.b_intervals,matched:clip.matched,open:clip.to_discuss});render()}
+  showMsg();
+}
+function setLang(l){lang=l;applyStatic()}
+$("lEn").onclick=()=>setLang("en");$("lTh").onclick=()=>setLang("th");
 
 async function init(){
   state=await api("/api/state");
   $("r1").value=state.reviewers[0]||"";$("r2").value=state.reviewers[1]||"";
-  $("legend").innerHTML=BEHAVIORS.map(b=>`<span>${pill(b)}</span>`).join("");
-  $("nameA").textContent="A: "+state.annotators[0];$("nameB").textContent="B: "+state.annotators[1];
-  $("hA").textContent="A says ("+state.annotators[0]+")";$("hB").textContent="B says ("+state.annotators[1]+")";
-  $("titleA").textContent="Pass A: "+state.annotators[0];$("titleB").textContent="Pass B: "+state.annotators[1];
-  drawChips();
+  applyStatic();
   const first=state.clips.find(c=>!c.done)||state.clips[0];
   if(first)open(first.clip_id,true);
 }
 function drawChips(){
   const done=state.clips.filter(c=>c.done).length;
-  $("progress").textContent=done+" of "+state.clips.length+" clips decided";
+  $("progress").textContent=t("progress",{done,total:state.clips.length});
   $("finish").hidden=done!==state.clips.length;
   $("chips").innerHTML="";
   state.clips.forEach(c=>{const e=document.createElement("span");e.className="chip"+(c.done?" done":"")+(clip&&clip.clip_id===c.clip_id?" cur":"");
-    e.textContent=c.clip_id+(c.done?" ✓":"")+"  ("+c.to_discuss+" to discuss)";e.onclick=()=>open(c.clip_id);$("chips").appendChild(e)});
+    e.textContent=c.clip_id+(c.done?" ✓":"")+"  ("+t("toDiscuss",{n:c.to_discuss})+")";e.onclick=()=>open(c.clip_id);$("chips").appendChild(e)});
 }
 async function open(id,force){
-  if(!force&&dirty&&!confirm("Leave this clip? Unsaved changes will be lost."))return;
+  if(!force&&dirty&&!confirm(t("confirmLeave")))return;
   clip=await api("/api/clip?id="+encodeURIComponent(id));
   final=(clip.final||[]).map(r=>({...r}));dirty=false;
   $("clipArea").hidden=false;$("clipTitle").textContent=clip.clip_id+"  ·  "+fmt(clip.duration_s)+" s";
   $("v").src=clip.video_url;$("reason").value=clip.reason||"";
-  $("stats").textContent=`A: ${clip.a_intervals} intervals · B: ${clip.b_intervals} intervals · ${clip.matched} matched (same label, overlapping) · ${clip.to_discuss} unmatched`;
-  say(clip.final?"Saved decision loaded.":"");
+  $("stats").textContent=t("stats",{a:clip.a_intervals,b:clip.b_intervals,matched:clip.matched,open:clip.to_discuss});
+  say(clip.final?"loaded":null);
   drawChips();render();
 }
-function blocks(track,list,key,clickable){
+function blocks(track,list,key){
   track.innerHTML="";const d=clip.duration_s;
-  list.forEach((iv,i)=>{const s=iv.start_s??iv.start,e=iv.end_s??iv.end,b=iv[key]||iv.behavior;
+  list.forEach(iv=>{const s=iv.start_s??iv.start,e=iv.end_s??iv.end,b=iv[key]||iv.behavior;
     const el=document.createElement("div");el.className="blk";el.style.left=(s/d*100)+"%";el.style.width=Math.max((e-s)/d*100,.4)+"%";
     el.style.background=color(b);el.textContent=b;el.title=`${b} ${fmt(s)}–${fmt(e)}`;track.appendChild(el)});
 }
 function render(){
+  if(!clip)return;
   blocks($("tA"),clip.a);blocks($("tB"),clip.b);
-  const t=$("tD");t.innerHTML="";const d=clip.duration_s;
+  const tr0=$("tD");tr0.innerHTML="";const d=clip.duration_s;
   clip.spans.filter(s=>!s.agree).forEach(s=>{const el=document.createElement("div");el.className="blk dis"+(s.short?" short":"");
     el.style.left=(s.start/d*100)+"%";el.style.width=Math.max((s.end-s.start)/d*100,.4)+"%";
-    el.title=`A: ${s.a||"not labelled"} / B: ${s.b||"not labelled"} (${fmt(s.end-s.start)} s)`;t.appendChild(el)});
-  blocks($("tF"),final,"behavior");
+    el.title=`A: ${s.a||t("notLabelled")} / B: ${s.b||t("notLabelled")} (${fmt(s.end-s.start)} s)`;tr0.appendChild(el)});
   const body=$("diffT").querySelector("tbody");body.innerHTML="";
   const diffs=clip.spans.filter(s=>!s.agree);
-  if(!diffs.length)body.innerHTML='<tr><td colspan="5">The passes give the same label everywhere. You still decide the final boundaries and write the reason.</td></tr>';
+  if(!diffs.length)body.innerHTML=`<tr><td colspan="5">${esc(t("noDiff"))}</td></tr>`;
   diffs.forEach(s=>{const tr=document.createElement("tr");tr.className="click";
-    tr.innerHTML=`<td>${fmt(s.start)}</td><td>${fmt(s.end)}</td><td>${fmt(s.end-s.start)} s${s.short?" (short)":""}</td><td>${pill(s.a)}</td><td>${pill(s.b)}</td>`;
+    tr.innerHTML=`<td>${fmt(s.start)}</td><td>${fmt(s.end)}</td><td>${fmt(s.end-s.start)} s${s.short?" ("+esc(t("short"))+")":""}</td><td>${pill(s.a)}</td><td>${pill(s.b)}</td>`;
     tr.onclick=()=>{$("v").currentTime=Math.max(0,s.start-.5);$("v").play()};body.appendChild(tr)});
-  listTable($("listA"),clip.a,"A");listTable($("listB"),clip.b,"B");
+  listTable($("listA"),clip.a);listTable($("listB"),clip.b);
   renderFinal();
 }
-function listTable(table,list,who){
+function listTable(table,list){
   const body=table.querySelector("tbody");body.innerHTML="";
   list.forEach((iv,i)=>{const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${i+1}</td><td>${pill(iv.behavior)}${iv.behavior==="Uncertain"&&iv.uncertain_reason?" <small>"+esc(iv.uncertain_reason)+"</small>":""}</td><td>${fmt(iv.start_s)}</td><td>${fmt(iv.end_s)}</td><td><button>Copy to final</button></td>`;
+    tr.innerHTML=`<td>${i+1}</td><td>${pill(iv.behavior)}${iv.behavior==="Uncertain"&&iv.uncertain_reason?" <small>"+esc(iv.uncertain_reason)+"</small>":""}</td><td>${fmt(iv.start_s)}</td><td>${fmt(iv.end_s)}</td><td><button>${esc(t("copyFinal"))}</button></td>`;
     tr.querySelector("button").onclick=()=>{final.push(copyOf(iv));mark();render()};body.appendChild(tr)});
 }
 function copyOf(iv){const r={behavior:iv.behavior,start_s:+iv.start_s,end_s:+iv.end_s,uncertain_reason:iv.uncertain_reason||""};
   CONDS.forEach(c=>r[c]=iv[c]||"unknown");return r}
-function selectHtml(name,value,idx){return `<select data-f="${name}" data-i="${idx}">${OPTIONS[name].map(o=>`<option${o===value?" selected":""}>${esc(o)}</option>`).join("")}</select>`}
+function selectHtml(name,value,idx){return `<select data-f="${name}" data-i="${idx}">${OPTIONS[name].map(o=>`<option value="${esc(o)}"${o===value?" selected":""}>${esc(optLabel(o))}</option>`).join("")}</select>`}
 function renderFinal(){
   final.sort((x,y)=>x.start_s-y.start_s||x.end_s-y.end_s);
   const body=$("finalT").querySelector("tbody");body.innerHTML="";
   final.forEach((r,i)=>{const tr=document.createElement("tr");
-    tr.innerHTML=`<td><select data-f="behavior" data-i="${i}">${BEHAVIORS.map(b=>`<option${b===r.behavior?" selected":""}>${b}</option>`).join("")}</select></td>
-    <td><input type="number" step="0.01" min="0" data-f="start_s" data-i="${i}" value="${fmt(r.start_s)}"><button data-t="s" data-i="${i}" title="Use the video position">⏱</button></td>
-    <td><input type="number" step="0.01" min="0" data-f="end_s" data-i="${i}" value="${fmt(r.end_s)}"><button data-t="e" data-i="${i}" title="Use the video position">⏱</button></td>
+    tr.innerHTML=`<td><select data-f="behavior" data-i="${i}">${BEHAVIORS.map(b=>`<option value="${b}"${b===r.behavior?" selected":""}>${esc(behLabel(b))}</option>`).join("")}</select></td>
+    <td><input type="number" step="0.01" min="0" data-f="start_s" data-i="${i}" value="${fmt(r.start_s)}"><button data-t="s" data-i="${i}" title="${esc(t("useVideo"))}">⏱</button></td>
+    <td><input type="number" step="0.01" min="0" data-f="end_s" data-i="${i}" value="${fmt(r.end_s)}"><button data-t="e" data-i="${i}" title="${esc(t("useVideo"))}">⏱</button></td>
     ${CONDS.map(c=>`<td>${selectHtml(c,r[c],i)}</td>`).join("")}
     <td><input type="text" data-f="uncertain_reason" data-i="${i}" value="${esc(r.uncertain_reason||"")}" ${r.behavior==="Uncertain"?"":"disabled"}></td>
-    <td><button data-d="${i}">Delete</button></td>`;body.appendChild(tr)});
+    <td><button data-d="${i}">${esc(t("delete"))}</button></td>`;body.appendChild(tr)});
   body.querySelectorAll("[data-f]").forEach(el=>el.onchange=()=>{const r=final[+el.dataset.i],f=el.dataset.f;
     r[f]=(f==="start_s"||f==="end_s")?+el.value:el.value;if(f==="behavior"&&r.behavior!=="Uncertain")r.uncertain_reason="";mark();render()});
   body.querySelectorAll("[data-t]").forEach(el=>el.onclick=()=>{final[+el.dataset.i][el.dataset.t==="s"?"start_s":"end_s"]=+(+$("v").currentTime).toFixed(2);mark();render()});
   body.querySelectorAll("[data-d]").forEach(el=>el.onclick=()=>{final.splice(+el.dataset.d,1);mark();render()});
   blocks($("tF"),final,"behavior");
 }
-$("fromA").onclick=()=>{if(final.length&&!confirm("Replace the current final intervals with pass A?"))return;final=clip.a.map(copyOf);mark();render()};
-$("fromB").onclick=()=>{if(final.length&&!confirm("Replace the current final intervals with pass B?"))return;final=clip.b.map(copyOf);mark();render()};
-$("clearF").onclick=()=>{if(final.length&&!confirm("Clear the final intervals?"))return;final=[];mark();render()};
-$("addRow").onclick=()=>{const t=+(+$("v").currentTime).toFixed(2);const r={behavior:"Uncertain",start_s:t,end_s:Math.min(+(t+2).toFixed(2),clip.duration_s),uncertain_reason:"to decide"};CONDS.forEach(c=>r[c]="unknown");final.push(r);mark();render()};
+$("fromA").onclick=()=>{if(final.length&&!confirm(t("confirmA")))return;final=clip.a.map(copyOf);mark();render()};
+$("fromB").onclick=()=>{if(final.length&&!confirm(t("confirmB")))return;final=clip.b.map(copyOf);mark();render()};
+$("clearF").onclick=()=>{if(final.length&&!confirm(t("confirmClear")))return;final=[];mark();render()};
+$("addRow").onclick=()=>{const p=+(+$("v").currentTime).toFixed(2);const r={behavior:"Uncertain",start_s:p,end_s:Math.min(+(p+2).toFixed(2),clip.duration_s),uncertain_reason:"to decide"};CONDS.forEach(c=>r[c]="unknown");final.push(r);mark();render()};
 $("reason").oninput=mark;
 $("saveNames").onclick=async()=>{const res=await api("/api/reviewers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reviewers:[$("r1").value,$("r2").value]})});
-  $("nameState").textContent=res.error?res.error:"Saved.";};
+  $("nameState").textContent=res.error?t("serverSays",{text:res.error}):t("namesSaved");};
 $("save").onclick=async()=>{
   const res=await api("/api/final",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({clip_id:clip.clip_id,intervals:final,reason:$("reason").value})});
-  if(res.error){say(res.error,"bad");return}
-  dirty=false;say("Saved: "+res.resolved_labels,"ok");
+  if(res.error){say(null,null,"bad",res.error);return}
+  dirty=false;say("saved",{labels:res.resolved_labels},"ok");
   const c=state.clips.find(x=>x.clip_id===clip.clip_id);c.done=true;drawChips();
 };
 $("v").addEventListener("timeupdate",moveHead);$("v").addEventListener("seeked",moveHead);
@@ -183,5 +207,5 @@ function moveHead(){if(!clip)return;const w=$("tA").getBoundingClientRect(),lane
 ["tA","tB","tD","tF"].forEach(id=>$(id).onclick=e=>{const r=e.currentTarget.getBoundingClientRect();$("v").currentTime=clip.duration_s*(e.clientX-r.left)/r.width});
 window.addEventListener("resize",moveHead);
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
-init();
+applyStatic();init();
 </script>
