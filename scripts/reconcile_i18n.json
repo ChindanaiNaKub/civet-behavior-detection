@@ -47,7 +47,7 @@
     "whyTitle": "Why",
     "whyPlaceholder": "What did you change and why, or: both passes agree. Required for every clip.",
     "save": "Save this clip's decision",
-    "unsaved": "Unsaved changes.",
+    "unsaved": "Not saved as a decision yet. A draft is autosaved.",
     "loaded": "Saved decision loaded.",
     "saved": "Saved: {labels}",
     "serverSays": "The system says: {text}",
@@ -77,7 +77,8 @@
     "o_tree/plant": "tree/plant",
     "o_fence/mesh": "fence/mesh",
     "o_enclosure structure": "enclosure structure",
-    "o_multiple obstructions": "multiple obstructions"
+    "o_multiple obstructions": "multiple obstructions",
+    "draftRestored": "Unsaved draft restored from the last autosave. Check it, then save the decision."
   },
   "th": {
     "title": "เทียบและรวมป้าย gold ทั้งสองชุด",
@@ -127,7 +128,7 @@
     "whyTitle": "เหตุผล",
     "whyPlaceholder": "แก้อะไรและทำไม หรือเขียนว่า: สองชุดตรงกัน ต้องกรอกทุกคลิป",
     "save": "บันทึกการตัดสินของคลิปนี้",
-    "unsaved": "ยังไม่ได้บันทึกการเปลี่ยนแปลง",
+    "unsaved": "ยังไม่ได้บันทึกเป็นการตัดสิน (ระบบบันทึกฉบับร่างอัตโนมัติไว้)",
     "loaded": "โหลดการตัดสินที่บันทึกไว้แล้ว",
     "saved": "บันทึกแล้ว: {labels}",
     "serverSays": "ระบบแจ้งว่า: {text}",
@@ -157,6 +158,7 @@
     "o_tree/plant": "ต้นไม้/พืช",
     "o_fence/mesh": "รั้ว/ตาข่าย",
     "o_enclosure structure": "โครงสร้างในกรง",
-    "o_multiple obstructions": "บังหลายอย่าง"
+    "o_multiple obstructions": "บังหลายอย่าง",
+    "draftRestored": "กู้ฉบับร่างที่บันทึกอัตโนมัติไว้แล้ว ตรวจดู แล้วกดบันทึกการตัดสิน"
   }
 }

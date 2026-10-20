@@ -118,7 +118,7 @@ def test_decisions_round_trip_keeps_durations(tmp_path):
     R.save_decisions(path, {"reviewers": ["A", "B"], "clips": {"c": {"intervals": [], "rows": [], "reason": "x"}}, "durations": {"c": 9.5}})
     loaded = R.load_decisions(path)
     assert loaded["durations"] == {"c": 9.5} and loaded["reviewers"] == ["A", "B"]
-    assert R.load_decisions(tmp_path / "missing.json") == {"reviewers": ["", ""], "clips": {}, "durations": {}}
+    assert R.load_decisions(tmp_path / "missing.json") == {"reviewers": ["", ""], "clips": {}, "durations": {}, "drafts": {}}
 
 
 def _setup(tmp_path):
@@ -239,3 +239,30 @@ def test_every_behavior_and_condition_value_has_a_label_in_both_languages():
         for choices in review.CONDITION_OPTIONS.values():
             for choice in choices:
                 assert f"o_{choice}" in R.TRANSLATIONS[language], choice
+
+
+def test_a_draft_is_kept_without_being_a_decision(tmp_path):
+    decisions = R.load_decisions(tmp_path / "none.json")
+    R.set_draft(decisions, "g1", [_iv(0.0, 5.0, "Resting")], "thinking", "t")
+    path = tmp_path / "d.json"
+    R.save_decisions(path, decisions)
+    loaded = R.load_decisions(path)
+    assert loaded["drafts"]["g1"]["reason"] == "thinking" and loaded["clips"] == {}
+
+
+def test_a_bad_draft_is_refused():
+    decisions = {"reviewers": ["", ""], "clips": {}, "durations": {}, "drafts": {}}
+    with pytest.raises(ValueError):
+        R.set_draft(decisions, "g1", "not a list", "x", "t")
+    with pytest.raises(ValueError):
+        R.set_draft(decisions, "g1", [], "x" * 6000, "t")
+
+
+def test_apply_ignores_drafts(tmp_path):
+    a, b, ledger, gold, store = _setup(tmp_path)
+    _decide(store)
+    decisions = R.load_decisions(store)
+    R.set_draft(decisions, "g1", [_iv(0.0, 1.0, "Eating")], "unfinished", "t")
+    R.save_decisions(store, decisions)
+    R.apply(a, b, ledger, store, gold, "t")
+    assert [(r["behavior"], r["start_s"]) for r in review.read_rows(a) if r["clip_id"] == "g1"] == [("Locomotion", "0.00"), ("Resting", "4.50")]

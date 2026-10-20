@@ -95,7 +95,9 @@ function behLabel(b){return lang==="en"?b:b+" · "+(TRANSLATIONS.th["d_"+b]||"")
 function say(key,params,kind,raw){lastMsg={key,params,kind,raw};showMsg()}
 function showMsg(){const m=$("msg");if(!lastMsg){m.textContent="";m.className="";return}
   m.textContent=lastMsg.raw?t("serverSays",{text:lastMsg.raw}):(lastMsg.key?t(lastMsg.key,lastMsg.params):"");m.className=lastMsg.kind||""}
-function mark(){dirty=true;say("unsaved")}
+let draftTimer=null;
+function mark(){dirty=true;say("unsaved");clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,700)}
+async function saveDraft(){if(!clip)return;try{await api("/api/draft",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({clip_id:clip.clip_id,intervals:final,reason:$("reason").value})})}catch(e){}}
 
 function applyStatic(){
   document.documentElement.lang=lang;
@@ -134,11 +136,12 @@ function drawChips(){
 async function open(id,force){
   if(!force&&dirty&&!confirm(t("confirmLeave")))return;
   clip=await api("/api/clip?id="+encodeURIComponent(id));
-  final=(clip.final||[]).map(r=>({...r}));dirty=false;
+  const src=clip.draft||{intervals:clip.final||[],reason:clip.reason||""};
+  final=src.intervals.map(r=>({...r}));dirty=!!clip.draft;
   $("clipArea").hidden=false;$("clipTitle").textContent=clip.clip_id+"  ·  "+fmt(clip.duration_s)+" s";
-  $("v").src=clip.video_url;$("reason").value=clip.reason||"";
+  $("v").src=clip.video_url;$("reason").value=src.reason||"";
   $("stats").textContent=t("stats",{a:clip.a_intervals,b:clip.b_intervals,matched:clip.matched,open:clip.to_discuss});
-  say(clip.final?"loaded":null);
+  say(clip.draft?"draftRestored":clip.final?"loaded":null);
   drawChips();render();
 }
 function blocks(track,list,key){

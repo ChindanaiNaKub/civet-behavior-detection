@@ -121,12 +121,13 @@ def resolved_labels(rows: list[dict]) -> str:
 def load_decisions(path: Path) -> dict:
     path = Path(path)
     if not path.exists():
-        return {"reviewers": ["", ""], "clips": {}, "durations": {}}
+        return {"reviewers": ["", ""], "clips": {}, "durations": {}, "drafts": {}}
     data = json.loads(path.read_text(encoding="utf-8"))
     return {
         "reviewers": list(data.get("reviewers", ["", ""])),
         "clips": dict(data.get("clips", {})),
         "durations": dict(data.get("durations", {})),
+        "drafts": dict(data.get("drafts", {})),
     }
 
 
@@ -137,6 +138,18 @@ def save_decisions(path: Path, decisions: dict) -> None:
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps(decisions, indent=2, ensure_ascii=False), encoding="utf-8")
     os.replace(temporary, path)
+
+
+def set_draft(decisions: dict, clip_id: str, intervals, reason, moment: str) -> None:
+    """Keep unsaved work so a closed or crashed page does not lose it.
+
+    A draft is not a decision: it is not validated and ``apply`` ignores it.
+    """
+    if not isinstance(intervals, list) or len(intervals) > 200 or not all(isinstance(i, dict) for i in intervals):
+        raise ValueError("a draft needs a list of intervals")
+    if not isinstance(reason, str) or len(reason) > 5000:
+        raise ValueError("the reason is too long")
+    decisions["drafts"][clip_id] = {"intervals": intervals, "reason": reason, "saved_at": moment}
 
 
 def reviewers_of(decisions: dict) -> list[str]:
@@ -295,6 +308,7 @@ class Handler(BaseHTTPRequestHandler):
                     "spans": spans(config.a[clip_id], config.b[clip_id], clip.duration_s),
                     "final": decision["intervals"] if decision else None,
                     "reason": decision["reason"] if decision else "",
+                    "draft": load_decisions(config.store_path)["drafts"].get(clip_id),
                     **config.stats(clip_id),
                 }
             )
@@ -309,7 +323,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         route = urlparse(self.path).path
-        if route not in ("/api/final", "/api/reviewers"):
+        if route not in ("/api/final", "/api/reviewers", "/api/draft"):
             self._json({"error": "not found"}, 404)
             return
         try:
@@ -332,6 +346,12 @@ class Handler(BaseHTTPRequestHandler):
                 clip_id = str(body.get("clip_id", ""))
                 if clip_id not in self.config.clips:
                     raise ValueError("unknown clip")
+                if route == "/api/draft":
+                    set_draft(decisions, clip_id, body.get("intervals"), body.get("reason", ""),
+                              datetime.now().astimezone().isoformat(timespec="seconds"))
+                    save_decisions(self.config.store_path, decisions)
+                    self._json({"drafted": True})
+                    return
                 duration = self.config.clips[clip_id].duration_s
                 rows = check_final(clip_id, body.get("intervals"), duration)
                 reason = str(body.get("reason", "")).strip()
@@ -340,6 +360,7 @@ class Handler(BaseHTTPRequestHandler):
                 decisions["clips"][clip_id] = {"intervals": body["intervals"], "rows": rows, "reason": reason,
                                                 "saved_at": datetime.now().astimezone().isoformat(timespec="seconds")}
                 decisions["durations"][clip_id] = duration
+                decisions["drafts"].pop(clip_id, None)
                 save_decisions(self.config.store_path, decisions)
             self._json({"saved": True, "resolved_labels": resolved_labels(rows),
                         "done": len(decisions["clips"]), "total": len(self.config.order)})
