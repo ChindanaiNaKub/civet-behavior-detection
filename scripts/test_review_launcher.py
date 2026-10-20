@@ -124,6 +124,8 @@ def test_both_languages_cover_ui_and_preserve_format_parameters():
     html = (source / "review_page.html").read_text(encoding="utf-8")
     referenced = set(re.findall(r'data-i18n(?:-placeholder|-aria)?="([^"]+)"', html))
     referenced.update(re.findall(r"\b(?:message|saved|setStep|t)\('([^']+)'", html))
+    referenced.discard("condition_")  # Dynamic prefix; check every actual menu value below.
+    referenced.update("condition_" + value for choices in review.CONDITION_OPTIONS.values() for value in choices)
     assert referenced <= translations["en"].keys()
     assert set(review.BEHAVIORS) <= translations["en"].keys()
     assert '<html lang="en">' in html
