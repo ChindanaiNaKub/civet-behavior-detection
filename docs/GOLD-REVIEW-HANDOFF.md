@@ -82,6 +82,24 @@ the page. Do not regenerate or replace an in-progress review folder.
    agreement score. The tool refuses to overwrite filled reconciliation columns;
    use a different `--out` only when intentionally starting another comparison.
 
+### Reconcile in the browser
+
+Steps 4 and 5 can be done in a page instead of by hand. Both reviewers open it together:
+
+```powershell
+python scripts/reconcile.py
+```
+
+It shows each gold clip with the two passes and a differences lane against the video. For each clip the reviewers build one final set of intervals (copy rows from either pass or edit them), write why it differs, or that both passes agree, and save. It validates that intervals do not overlap, stay inside the clip, carry all four conditions and give Uncertain a reason. Decisions are kept in `outputs/reconcile/decisions.json`, which Git ignores, and `data/` is not touched. The page decides nothing for the reviewers.
+
+When every gold clip has a decision and both reviewer names are saved, stop the page and run:
+
+```powershell
+python scripts/reconcile.py --apply
+```
+
+That writes `data/agreement.csv` with the measured columns from the original two passes plus `resolved_labels`, `resolution_reason`, `reviewed_by` and `reviewed_at`, and replaces the gold rows in `data/annotations.csv` with the final intervals (annotator `reconciled`). It refuses to run twice, to overwrite a filled ledger, or with fewer than two different reviewer names. Commit the result with the original passes still in Git history.
+
 ## Regenerate and arrange the human lock
 
 After reconciliation, from the repository root:
