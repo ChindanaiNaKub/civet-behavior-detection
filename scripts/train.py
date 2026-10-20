@@ -39,6 +39,9 @@ def class_weights(y_true, classes) -> torch.Tensor:
 
 def train_epoch(model, decoded, indices, targets, optimizer, scaler, weights, device, batch: int = BATCH) -> float:
     model.train()
+    # ADR 0004 trains only the head. Eval mode also keeps the frozen backbone's
+    # BatchNorm statistics from drifting.
+    model.backbone.eval()
     criterion = nn.CrossEntropyLoss(weight=weights)
     order = np.random.permutation(len(indices))
     total = 0.0
@@ -105,9 +108,13 @@ def main() -> int:
     train_targets = [target_of[label] for label in train_labels]
 
     model = M.BehaviorCNN(classes).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
+    for parameter in model.backbone.parameters():
+        parameter.requires_grad = False
+    optimizer = torch.optim.AdamW(model.head.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     scaler = torch.amp.GradScaler(enabled=device.type == "cuda")
     weights = class_weights(train_labels, classes).to(device)
+
+    print(f"trainable parameters {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
 
     best = {"macro_f1": -1.0, "epoch": -1, "state": None}
     history = []

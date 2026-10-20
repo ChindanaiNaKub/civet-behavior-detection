@@ -7,11 +7,17 @@ per-class precision/recall/F1, a confusion matrix including abstentions, and the
 abstain rate; all four come out of metrics.py, and any class the test clips
 cannot support is named in the output rather than folded into the aggregate.
 
+``--validation-only`` chooses the threshold and stops before the test split is
+decoded, so issue #5's demo can run before the test set is locked. It writes
+outputs/validation.md and outputs/threshold.json by default, never the held-out
+report paths.
+
 Writes the markdown report for docs/EVALUATION-REPORT.md and the JSON that
 scripts/demo.py reads for the chosen threshold.
 
 Usage:
     python3 scripts/evaluate.py --model outputs/model/model.pt
+    python3 scripts/evaluate.py --validation-only
 """
 
 from __future__ import annotations
@@ -34,10 +40,18 @@ def main() -> int:
     parser.add_argument("--source-clips", type=Path, default=Path("data/source-clips.csv"))
     parser.add_argument("--clips-root", type=Path, default=Path("data/raw"))
     parser.add_argument("--model", type=Path, default=Path("outputs/model/model.pt"))
-    parser.add_argument("--report", type=Path, default=Path("outputs/evaluation.md"))
-    parser.add_argument("--json", type=Path, default=Path("outputs/evaluation.json"))
+    parser.add_argument("--report", type=Path, default=None)
+    parser.add_argument("--json", type=Path, default=None)
+    parser.add_argument("--validation-only", action="store_true", help="choose the threshold on validation, never decode or score the test split")
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
+
+    if args.validation_only:
+        args.report = args.report or Path("outputs/validation.md")
+        args.json = args.json or Path("outputs/threshold.json")
+    else:
+        args.report = args.report or Path("outputs/evaluation.md")
+        args.json = args.json or Path("outputs/evaluation.json")
 
     device = torch.device(args.device if args.device != "cuda" or torch.cuda.is_available() else "cpu")
     model, config = M.load(args.model, str(device))
@@ -47,19 +61,50 @@ def main() -> int:
     relative = W.read_relative_paths(args.source_clips)
     val_windows = [w for w in all_windows if w.split == "validation"]
     test_windows = [w for w in all_windows if w.split == "test"]
-    if not val_windows or not test_windows:
-        parser.error(f"need validation and test windows; have {len(val_windows)} and {len(test_windows)}")
+    if not val_windows:
+        parser.error("need validation windows; have 0")
+    if not test_windows and not args.validation_only:
+        parser.error(f"need test windows; have {len(test_windows)}")
 
     val_labels = [w.behavior for w in val_windows]
-    test_labels = [w.behavior for w in test_windows]
     val_probabilities = M.probabilities(model, frames.decode_windows(val_windows, args.clips_root, relative), range(len(val_windows)), device)
-    test_probabilities = M.probabilities(model, frames.decode_windows(test_windows, args.clips_root, relative), range(len(test_windows)), device)
 
     threshold, val_score = metrics.best_threshold(val_probabilities, val_labels, classes)
     val_preds = [classes[i] if val_probabilities[j].max() >= threshold else None for j, i in enumerate(val_probabilities.argmax(axis=1))]
-    test_preds = [classes[i] if test_probabilities[j].max() >= threshold else None for j, i in enumerate(test_probabilities.argmax(axis=1))]
-
     validation = metrics.report(val_labels, val_preds, classes)
+
+    if args.validation_only:
+        lines = [
+            "# Validation-only threshold selection",
+            "",
+            f"Model `{args.model}` trained to epoch {config['best_epoch']} with validation macro F1 {config['val_macro_f1']} "
+            f"over {config['train_windows']} training windows.",
+            f"Abstain threshold {threshold:.2f}, chosen on the {len(val_windows)} validation windows "
+            f"(validation macro F1 {val_score:.3f} at that threshold, {validation['abstain_rate']:.1%} abstained).",
+            "No test window was decoded or scored. This is not a held-out result; run this script without"
+            " `--validation-only` after the test set is locked.",
+            "",
+            metrics.markdown(validation, "Validation clips"),
+            "",
+            "## Reading this honestly",
+            "",
+            "- The threshold in this report is the one `scripts/demo.py` should use until the test set is locked.",
+            "- Validation support is small. Read each class's support beside its score.",
+            "- Run `python3 scripts/evaluate.py --validation-only` again to reproduce; the split is fixed in data/splits.csv.",
+        ]
+        report = "\n".join(lines)
+        payload = {"mode": "validation-only", "threshold": threshold, "validation": validation, "test": None, "config": config}
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(report + "\n")
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(json.dumps(payload, indent=2) + "\n")
+        print(report)
+        print(f"\nwritten to {args.report} and {args.json}")
+        return 0
+
+    test_labels = [w.behavior for w in test_windows]
+    test_probabilities = M.probabilities(model, frames.decode_windows(test_windows, args.clips_root, relative), range(len(test_windows)), device)
+    test_preds = [classes[i] if test_probabilities[j].max() >= threshold else None for j, i in enumerate(test_probabilities.argmax(axis=1))]
     test = metrics.report(test_labels, test_preds, classes)
 
     lines = [
@@ -69,7 +114,7 @@ def main() -> int:
         f"over {config['train_windows']} training windows.",
         f"Abstain threshold {threshold:.2f}, chosen on the {len(val_windows)} validation windows "
         f"(validation macro F1 {val_score:.3f} at that threshold, {validation['abstain_rate']:.1%} abstained).",
-        "The test clips were read once, after the threshold was fixed.",
+        "The test clips were decoded and scored once, after the threshold was fixed.",
         "",
         metrics.markdown(test, "Test clips"),
         "",

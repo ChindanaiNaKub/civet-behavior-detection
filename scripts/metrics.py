@@ -6,7 +6,7 @@ for its true class's recall and enters no class's precision denominator, so
 abstaining everywhere scores 0 instead of scoring well. Issue #5 requires that
 treatment and issue #6 requires the Uncertain rate be reported next to it.
 
-Macro F1 is averaged over the classes named here. When a class has no test
+Macro F1 is averaged over the classes named here. When a class has no
 example its F1 is 0 and drags the macro down, so `macro_f1_supported` (classes
 with at least one example) is reported alongside it and the per-class support is
 always printed.
@@ -89,11 +89,11 @@ def markdown(metrics: dict, title: str) -> str:
     lines += [
         "",
         f"**Macro F1 {metrics['macro_f1']:.3f}** over {len(metrics['classes'])} classes. "
-        f"Macro F1 over the classes with test examples: {metrics['macro_f1_supported']:.3f}.",
+        f"Macro F1 over the classes with support: {metrics['macro_f1_supported']:.3f}.",
     ]
     if metrics["unsupported_classes"]:
         lines.append(
-            "No test example exists for: " + ", ".join(metrics["unsupported_classes"]) + ", so their F1 is 0 above."
+            "No example exists for: " + ", ".join(metrics["unsupported_classes"]) + ", so their F1 is 0 above."
         )
     lines += ["", "Confusion matrix, rows true, columns predicted, last column abstained:", "", "| true \\ pred | " 
               + " | ".join(metrics["classes"]) + " | abstain |", "|---|" + "---:|" * (len(metrics["classes"]) + 1)]
