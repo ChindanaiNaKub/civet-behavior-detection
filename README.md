@@ -4,7 +4,7 @@ Phase 2 project for building a checkable short-clip behavior-classification base
 
 ## Current status
 
-The pipeline is built and runs end to end. `data/annotations.csv` covers all 22 clips: the first annotator's verified intervals for the 14 train and validation clips, and the reconciled final intervals for the eight gold clips. The two independent gold passes were compared (Dice 0.597 over the eight clips, in `data/agreement.csv`) and reconciled with `scripts/reconcile.py`. The test set is locked: Gun signed `data/splits.csv` on 2026-10-20 (test windows Eating 7 / Locomotion 2 / Resting 6), and `scripts/split.py` refuses to overwrite a signed ledger. A baseline checkpoint has been trained on the train split and shown on a validation clip with a validation-selected threshold; see [Baseline training and clip demo](docs/BASELINE-DEMO.md). No model has been evaluated on the test split and no reported number exists yet. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
+The pipeline is built and runs end to end. `data/annotations.csv` covers all 22 clips: the first annotator's verified intervals for the 14 train and validation clips, and the reconciled final intervals for the eight gold clips. The two independent gold passes were compared (Dice 0.597 over the eight clips, in `data/agreement.csv`) and reconciled with `scripts/reconcile.py`. The test set is locked: Gun signed `data/splits.csv` on 2026-10-20 (test windows Eating 7 / Locomotion 2 / Resting 6), and `scripts/split.py` refuses to overwrite a signed ledger. A baseline checkpoint has been trained on the train split and shown on a validation clip with a validation-selected threshold; see [Baseline training and clip demo](docs/BASELINE-DEMO.md). It was scored once on the locked test split on 2026-10-21: test macro F1 0.949 over 15 windows, with no abstentions. See the [held-out evaluation report](docs/EVALUATION-REPORT.md) for the per-class numbers, verified coverage, annotation agreement, the one error and the limits. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
 
 The model classes are Eating, Locomotion and Resting. The brief calls the third class Walking, and the repository calls it Locomotion because the Phase 1 glossary widened it to any movement that changes location. Climbing is out of scope: no Climbing clip was supplied, the two candidate intervals were reviewed and are not climbing, and the instructor confirmed three classes are enough. It stays a valid annotation label that never becomes a model class, and no Climbing work is planned. See [ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md) for the model, [ADR 0005](docs/adr/0005-split-by-clip-not-by-recording-group.md) for the split rule and [ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md) for Climbing.
 
@@ -13,6 +13,7 @@ The model classes are Eating, Locomotion and Resting. The brief calls the third 
 - [คู่มือหน้าตรวจสำหรับ Windows / Fedora Linux](docs/REVIEWER-QUICKSTART.md)
 - [Gold review handoff: second reviewer, reconciliation and test lock](docs/GOLD-REVIEW-HANDOFF.md)
 - [Baseline training and clip demo](docs/BASELINE-DEMO.md)
+- [Held-out evaluation report](docs/EVALUATION-REPORT.md)
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
 - [Footage and compute audit](docs/FOOTAGE-AUDIT.md)
 - [Behavior interval annotation guide](docs/ANNOTATION-GUIDE.md)
@@ -148,10 +149,11 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 - `scripts/frames.py` — decodes the frames of a window.
 - `scripts/model.py` — the frame CNN and its checkpoint format.
 - `scripts/train.py` — trains on the train split, early-stops on the validation split.
-- `scripts/evaluate.py` — chooses the abstain threshold on validation, scores the locked test set once, and writes the report block.
+- `scripts/evaluate.py` — chooses the abstain threshold on validation, scores the locked test set once, and writes the report block and per-window predictions.
 - `scripts/demo.py` — prints one clip's predicted behavior timeline.
 - `scripts/metrics.py` — class metrics that count an abstention as a miss.
 - `requirements.txt` — the pinned versions the pipeline was run with.
+- `docs/EVALUATION-REPORT.md` — the held-out result, coverage, agreement, error example and limits.
 - `docs/PHASE-2-PLAN.md` — schedule, workstreams, evaluation, and risks.
 - `docs/adr/` — project decisions and their rationale.
 - `docs/agents/` — issue-tracker and domain-document conventions for agents.
