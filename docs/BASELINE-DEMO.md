@@ -85,7 +85,7 @@ range, the behavior or Uncertain result, and the confidence. The last four
 seconds are a shorter tail and are dropped, because every model input is exactly
 five seconds.
 
-## Limits to carry into issue #6
+## Limits carried into the held-out run
 
 - Validation has one Locomotion window. Its perfect score is not a stable
   estimate for that class.
@@ -94,8 +94,9 @@ five seconds.
   travel together, so a high score can come from recognising the recording.
 - The validation-selected threshold is 0.00, so the demo cannot show an
   Uncertain result. Do not read that as calibrated confidence.
-- No test video was decoded and no test window was scored. There is no held-out
-  number yet. The test set is locked: Gun signed `data/splits.csv` on 2026-10-20.
+- No test video was decoded and no test window was scored in this demo. The test
+  set is locked: Gun signed `data/splits.csv` on 2026-10-20. The single held-out
+  run after the lock is in the [evaluation report](EVALUATION-REPORT.md).
 
 ## Reproduce
 

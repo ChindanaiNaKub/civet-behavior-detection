@@ -128,10 +128,24 @@ def main() -> int:
         "- Run `python3 scripts/evaluate.py` again to reproduce; the split is fixed in data/splits.csv.",
     ]
     report = "\n".join(lines)
+    # Per-window rows keep every reported error traceable to its clip and time
+    # range, which the report has to name without decoding the test set again.
+    scored = [
+        {
+            "clip_id": window.clip_id,
+            "start_s": window.start,
+            "end_s": window.end,
+            "behavior": label,
+            "predicted": pred,
+            "confidence": float(row.max()),
+            "probabilities": {c: float(p) for c, p in zip(classes, row)},
+        }
+        for window, label, pred, row in zip(test_windows, test_labels, test_preds, test_probabilities)
+    ]
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(report + "\n")
     args.json.parent.mkdir(parents=True, exist_ok=True)
-    args.json.write_text(json.dumps({"threshold": threshold, "validation": validation, "test": test, "config": config}, indent=2) + "\n")
+    args.json.write_text(json.dumps({"threshold": threshold, "validation": validation, "test": test, "windows": scored, "config": config}, indent=2) + "\n")
     print(report)
     print(f"\nwritten to {args.report} and {args.json}")
     return 0

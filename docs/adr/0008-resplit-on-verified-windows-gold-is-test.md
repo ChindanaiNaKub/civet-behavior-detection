@@ -26,3 +26,7 @@ Two clips moved into test to give it Eating and Resting: `25690519193422801` (Ea
 - **The blind pass on the two moved clips is weaker.** The first annotator saw the proposal and their own earlier labels for those clips. The second annotator has no such history, which is why the agreement score matters most on them.
 - **Locked.** Both gold passes exist, the agreement is computed and reconciled, and `split.py` passes on the final labels, so Gun signed `test_locked_by` and `test_locked_at` on the eight test rows of `data/splits.csv` on 2026-10-20, and reports that the repository owner agreed. `split.py` now refuses to overwrite a signed ledger. `scripts/evaluate.py` does not check the lock itself; it must read the test windows once, after the threshold is chosen on validation.
 - **Fallback.** If the blind labels leave a class with no window, use group-aware cross-validation for development as the plan allows, and report that no held-out estimate is reliable.
+
+## Update 2026-10-21
+
+The final reconciled ledger gives 138 windows in total (Eating 31, Locomotion 8, Resting 99). The 141-window and 11-Locomotion figures in the consequences above come from an earlier label pass, before the reconciliation. The split assignment and the decision in this ADR are unchanged. The held-out evaluation is in [`../../docs/EVALUATION-REPORT.md`](../../docs/EVALUATION-REPORT.md).
