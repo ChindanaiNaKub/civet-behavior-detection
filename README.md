@@ -17,6 +17,7 @@ Tasks 2 and 3 were added to the scope on 2026-10-26, when the professor confirme
 - [Baseline training and clip demo](docs/BASELINE-DEMO.md)
 - [Held-out evaluation report](docs/EVALUATION-REPORT.md)
 - [Tasks 2 and 3: detection and silhouette features](docs/TASKS-2-AND-3.md)
+- [Phase 2 presentation](docs/CMZ-Phase-2-Presentation.pptx)
 - [The four Task 3 features](docs/FEATURES.md)
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
 - [Footage and compute audit](docs/FOOTAGE-AUDIT.md)
