@@ -4,6 +4,7 @@ numpy==2.4.0
 opencv-python==4.13.0.92
 torch==2.10.0
 torchvision==0.25.0
+ultralytics==8.4.80
 transformers==4.57.6
 
 # pytest is only needed for the self-checks in scripts/test_*.py.

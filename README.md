@@ -1,6 +1,6 @@
 # Civet Behavior Detection
 
-Phase 2 project for building a checkable short-clip behavior-classification baseline from civet footage.
+Phase 2 project for building a checkable short-clip behavior-classification baseline from civet footage, covering all three tasks of the brief: image-based behavior classification (Task 1), YOLO-based behavior detection (Task 2) and behavior analysis from features (Task 3).
 
 ## Current status
 
@@ -8,12 +8,17 @@ The pipeline is built and runs end to end. `data/annotations.csv` covers all 22 
 
 The model classes are Eating, Locomotion and Resting. The brief calls the third class Walking, and the repository calls it Locomotion because the Phase 1 glossary widened it to any movement that changes location. Climbing is out of scope: no Climbing clip was supplied, the two candidate intervals were reviewed and are not climbing, and the instructor confirmed three classes are enough. It stays a valid annotation label that never becomes a model class, and no Climbing work is planned. See [ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md) for the model, [ADR 0005](docs/adr/0005-split-by-clip-not-by-recording-group.md) for the split rule and [ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md) for Climbing.
 
+Tasks 2 and 3 were added to the scope on 2026-10-26, when the professor confirmed all three tasks are required ([ADR 0009](docs/adr/0009-build-tasks-2-and-3-on-auto-labels.md)). Neither task has a human-drawn label: Task 2 trains a YOLO detector on boxes the classical background model proposes, checked by a visual audit of 116 boxes, and Task 3 replaces keypoints with silhouette geometry. The detector reaches mAP50 0.537 on validation but only finds the animal in 59 percent of held-out frames, and the feature classifier reaches macro F1 0.422 on the locked test windows. Both numbers and what they do not prove are in [Tasks 2 and 3](docs/TASKS-2-AND-3.md).
+
 ## Start here
 
 - [คู่มือหน้าตรวจสำหรับ Windows / Fedora Linux](docs/REVIEWER-QUICKSTART.md)
 - [Gold review handoff: second reviewer, reconciliation and test lock](docs/GOLD-REVIEW-HANDOFF.md)
 - [Baseline training and clip demo](docs/BASELINE-DEMO.md)
 - [Held-out evaluation report](docs/EVALUATION-REPORT.md)
+- [Tasks 2 and 3: detection and silhouette features](docs/TASKS-2-AND-3.md)
+- [Phase 2 presentation](docs/CMZ-Phase-2-Presentation.pptx)
+- [The four Task 3 features](docs/FEATURES.md)
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
 - [Footage and compute audit](docs/FOOTAGE-AUDIT.md)
 - [Behavior interval annotation guide](docs/ANNOTATION-GUIDE.md)
@@ -27,6 +32,7 @@ The model classes are Eating, Locomotion and Resting. The brief calls the third 
 - [Decision: Climbing has no evidence of absence (superseded)](docs/adr/0006-climbing-has-no-evidence-of-absence.md)
 - [Decision: drop Climbing from Phase 2 scope](docs/adr/0007-drop-climbing-from-phase-2-scope.md)
 - [Decision: re-split on verified windows, gold set is the test split](docs/adr/0008-resplit-on-verified-windows-gold-is-test.md)
+- [Decision: build Tasks 2 and 3 on auto-generated labels](docs/adr/0009-build-tasks-2-and-3-on-auto-labels.md)
 - [Behavior dataset ledger and templates](data/README.md)
 - [Phase 2 plan issue #1](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/1)
 - [Phase 2 spec issue #2](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/2)
@@ -90,6 +96,15 @@ validation-only run.
 python3 -m pytest scripts
 ```
 
+8. Task 2 and Task 3. The detector learns from boxes the background model proposes, so no bounding box is drawn by hand. The feature pipeline reports the four Task 3 features per window. Every number they produce is in [Tasks 2 and 3](docs/TASKS-2-AND-3.md).
+
+```
+python3 scripts/detect.py            # seed boxes, visual audit
+python3 scripts/train_detector.py    # YOLO round 1, then self-training round 2
+python3 scripts/features.py          # four silhouette features plus classifier
+python3 scripts/demo_all.py data/raw/Eating/25690519193422801.mp4
+```
+
 The gold set is the eight clips in `data/gold-clips.txt`, which are also the test split (ADR 0008). Two different people label them blind, each without opening the other's file, `data/annotations.csv` or `outputs/prelabel/`. `review.py` needs only the Python standard library.
 
 First annotator, who also redoes the two clips that moved into test (`--redo`) so the page serves them again:
@@ -147,10 +162,14 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 - `data/gold-clips.txt` — the eight gold clips, one id per line, also the test split.
 - `scripts/windows.py` — builds exactly five-second labeled windows from the verified intervals, keeping only windows one verified model-class interval covers completely.
 - `scripts/frames.py` — decodes the frames of a window.
+- `scripts/detect.py` — seed box detector: per-pixel median background, MAD threshold and a temporal persistence filter, writing YOLO-format frames, labels and `outputs/detection/boxes.csv`. Logic checks in `scripts/test_detect.py`.
 - `scripts/model.py` — the frame CNN and its checkpoint format.
 - `scripts/train.py` — trains on the train split, early-stops on the validation split.
 - `scripts/evaluate.py` — chooses the abstain threshold on validation, scores the locked test set once, and writes the report block and per-window predictions.
 - `scripts/demo.py` — prints one clip's predicted behavior timeline.
+- `scripts/train_detector.py` — trains the Task 2 detector on the seed boxes and self-trains a second round; holds the 8 gold clips out of both.
+- `scripts/features.py` — Task 3 silhouette features and the small classifier over them.
+- `scripts/demo_all.py` — one command for all three tasks on one clip: behavior, detector box and crop, and the four features.
 - `scripts/metrics.py` — class metrics that count an abstention as a miss.
 - `requirements.txt` — the pinned versions the pipeline was run with.
 - `docs/EVALUATION-REPORT.md` — the held-out result, coverage, agreement, error example and limits.
