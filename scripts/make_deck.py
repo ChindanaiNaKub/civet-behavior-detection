@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Build the CMZ Phase 2 presentation deck and its two evidence figures.
+"""Build the CMZ Phase 2 presentation deck, its two evidence figures, and a PDF.
 
 Run from the repository root:
 
-    python3 scripts/make_deck.py
+    python3 scripts/make_deck.py             # deck, figures, and PDF
+    python3 scripts/make_deck.py --no-pdf    # skip the PDF
 
 Canvas is 16:9 at 1280x720 px, matching the Phase 1 design spec.
 Every number on the slides is copied from docs/TASKS-2-AND-3.md,
@@ -11,7 +12,10 @@ docs/EVALUATION-REPORT.md or outputs/features/features.md.
 """
 
 from pathlib import Path
+import argparse
 import csv
+import shutil
+import subprocess
 
 import cv2
 import numpy as np
@@ -691,7 +695,7 @@ NOTES = {
 
 # ---------------------------------------------------------------- main
 
-def build():
+def build(export_pdf: bool = True) -> None:
     conf = build_figures()
 
     prs = Presentation()
@@ -722,7 +726,30 @@ def build():
     prs.save(str(OUT))
     print(f"wrote {OUT.relative_to(ROOT)} ({OUT.stat().st_size / 1024:.0f} KB), "
           f"{len(prs.slides)} slides")
+    if export_pdf:
+        export_to_pdf(OUT)
+
+
+def export_to_pdf(pptx: Path) -> Path | None:
+    """Write the PDF beside the deck, so a viewer without PowerPoint can read it.
+
+    LibreOffice is the only free converter that keeps the text selectable. When it
+    is missing the deck is still written and the PDF step is skipped loudly.
+    """
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    if soffice is None:
+        print("soffice not found, skipped the PDF export")
+        return None
+    subprocess.run(
+        [soffice, "--headless", "--convert-to", "pdf", "--outdir", str(pptx.parent), str(pptx)],
+        check=True, capture_output=True, timeout=300,
+    )
+    pdf = pptx.with_suffix(".pdf")
+    print(f"wrote {pdf.relative_to(ROOT)} ({pdf.stat().st_size / 1024:.0f} KB)")
+    return pdf
 
 
 if __name__ == "__main__":
-    build()
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--no-pdf", action="store_true", help="write the pptx only")
+    build(export_pdf=not parser.parse_args().no_pdf)
