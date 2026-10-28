@@ -7,6 +7,7 @@
 # Keep stray video out, except the tracked behavior clip dataset in data/raw/
 *.mp4
 !data/raw/**/*.mp4
+!site/media/*.mp4
 
 # Model weights and generated experiment output
 models/

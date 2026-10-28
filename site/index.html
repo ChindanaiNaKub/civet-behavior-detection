@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Civet behavior detection: held-out demo</title>
+<style>
+  :root { --bg:#F3EEDF; --panel:#E1E6DA; --forest:#284236; --rust:#C45A3B; --moss:#87966F;
+           --ink:#22241F; --muted:#64675E; --rule:#C9C6B4; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.55 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; }
+  .serif { font-family:inherit; }
+  .sans { font-family:"Helvetica Neue", Inter, system-ui, sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:0 32px 96px; }
+  header { padding:56px 0 28px; border-bottom:2px solid var(--forest); }
+  .kicker { font:600 11px/1 "Helvetica Neue", sans-serif; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--rust); }
+  h1 { font-size:clamp(34px,4.4vw,54px); line-height:1.05; margin:14px 0 12px; font-weight:400; }
+  .lead { max-width:62ch; color:var(--muted); }
+  h2 { font-size:26px; font-weight:400; margin:0 0 6px; }
+  h2 .num { color:var(--rust); font:600 12px/1 "Helvetica Neue", sans-serif;
+    letter-spacing:.16em; margin-right:12px; vertical-align:3px; }
+  section { padding:44px 0; border-bottom:1px solid var(--rule); }
+  section p { max-width:74ch; }
+  .row { display:grid; grid-template-columns:1.35fr .9fr; gap:28px; align-items:start; }
+  @media (max-width:900px) { .row { grid-template-columns:1fr; } }
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 12px; }
+  .tab { font:500 12px/1 "Helvetica Neue", sans-serif; letter-spacing:.06em; padding:9px 14px;
+    border:1px solid var(--rule); background:transparent; color:var(--muted); cursor:pointer; }
+  .tab.on { background:var(--forest); border-color:var(--forest); color:var(--bg); }
+  .stage { display:none; }
+  .stage.on { display:block; }
+  video { width:100%; display:block; background:#10130F; }
+  .timeline { margin-top:8px; display:grid; gap:4px; }
+  .band { display:grid; grid-template-columns:62px 1fr; gap:8px; align-items:center; }
+  .bl { font:500 10px/1 "Helvetica Neue", sans-serif; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--muted); }
+  .segs { display:flex; gap:3px; }
+  .seg { flex:1 1 0; height:38px; border:0; padding:0 5px; cursor:pointer; background:var(--c);
+    color:#F3EEDF; font:500 10px/1.15 "Helvetica Neue", sans-serif; text-align:left;
+    display:flex; align-items:center; overflow:hidden; opacity:.85; }
+  .seg.excluded { background:var(--rule); color:var(--muted); cursor:default; }
+  .seg.current { opacity:1; outline:2px solid var(--ink); outline-offset:-2px; }
+  .readout { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-top:12px;
+    font-family:"Helvetica Neue", sans-serif; }
+  .readout b { font-size:19px; font-weight:500; color:var(--ink); }
+  .readout span { font-size:12.5px; line-height:1.5; color:var(--muted); }
+  .readout .meta { flex:1 1 300px; }
+  table { width:100%; border-collapse:collapse; margin:16px 0 6px;
+    font:14px/1.4 "Helvetica Neue", sans-serif; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--rule); }
+  th { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+    font-weight:600; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  td.dim { color:var(--muted); }
+  .big { display:flex; gap:36px; flex-wrap:wrap; margin:20px 0 8px; }
+  .big div { min-width:150px; }
+  .big b { display:block; font-size:44px; line-height:1; font-weight:400; color:var(--forest); }
+  .big span { font:12px/1.4 "Helvetica Neue", sans-serif; color:var(--muted); }
+  .note { background:var(--panel); padding:16px 18px; font-size:14px; color:var(--muted);
+    font-family:"Helvetica Neue", sans-serif; }
+  code { font:13px/1.4 ui-monospace, "SF Mono", Menlo, monospace; background:var(--panel);
+    padding:2px 5px; }
+  pre { background:var(--panel); padding:14px 16px; overflow:auto; font-size:13px; }
+  footer { padding-top:26px; font:12px/1.6 "Helvetica Neue", sans-serif; color:var(--muted); }
+  a { color:var(--forest); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="kicker">CMZ / Phase 2 / held-out demo</div>
+  <h1>Civet behavior detection</h1>
+  <p class="lead">Three tasks on five-second windows of camera-trap footage: behavior
+  classification, YOLO detection of the animal, and silhouette features. The clips below
+  are precomputed from committed model outputs, so this page runs on any machine with a browser.</p>
+</header>
+
+<section>
+  <div class="row">
+    <div>
+      <h2><span class="num">01</span>Prediction timeline</h2>
+      <div class="tabs"><button class="tab" data-clip="25690519193547292" title="25690519193547292">Eating &middot; 547292</button>
+<button class="tab" data-clip="25690518091030781" title="25690518091030781">Locomotion &middot; 030781</button>
+<button class="tab" data-clip="25690519195143424" title="25690519195143424">Resting &middot; 143424</button></div>
+      <div class="stage" data-clip="25690519193547292">
+  <video src="media/25690519193547292.mp4" muted loop playsinline preload="metadata"></video>
+  <div class="timeline">
+    <div class="band"><span class="bl">verified</span><div class="segs"><span class="seg excluded" title="0.0-5.0 s: not_covered"><span>excluded</span></span><span class="seg excluded" title="5.0-10.0 s: not_covered"><span>excluded</span></span><span class="seg" style="--c:#C45A3B" title="10.0-15.0 s: Eating"><span>Eating</span></span><span class="seg" style="--c:#C45A3B" title="15.0-20.0 s: Eating"><span>Eating</span></span><span class="seg" style="--c:#C45A3B" title="20.0-25.0 s: Eating"><span>Eating</span></span><span class="seg" style="--c:#C45A3B" title="25.0-30.0 s: Eating"><span>Eating</span></span><span class="seg" style="--c:#C45A3B" title="30.0-35.0 s: Eating"><span>Eating</span></span><span class="seg" style="--c:#C45A3B" title="35.0-40.0 s: Eating"><span>Eating</span></span></div></div>
+    <div class="band"><span class="bl">model</span><div class="segs"><button class="seg" data-at="0.0" style="--c:#C45A3B" title="0.0-5.0 s: Eating 0.57"><span>Eating</span></button><button class="seg" data-at="5.0" style="--c:#C45A3B" title="5.0-10.0 s: Eating 0.71"><span>Eating</span></button><button class="seg" data-at="10.0" style="--c:#C45A3B" title="10.0-15.0 s: Eating 0.71"><span>Eating</span></button><button class="seg" data-at="15.0" style="--c:#C45A3B" title="15.0-20.0 s: Eating 0.71"><span>Eating</span></button><button class="seg" data-at="20.0" style="--c:#C45A3B" title="20.0-25.0 s: Eating 0.70"><span>Eating</span></button><button class="seg" data-at="25.0" style="--c:#C45A3B" title="25.0-30.0 s: Eating 0.65"><span>Eating</span></button><button class="seg" data-at="30.0" style="--c:#C45A3B" title="30.0-35.0 s: Eating 0.69"><span>Eating</span></button><button class="seg" data-at="35.0" style="--c:#C45A3B" title="35.0-40.0 s: Eating 0.67"><span>Eating</span></button></div></div>
+  </div>
+  <div class="readout"><b class="now">-</b><span class="meta"></span></div>
+</div>
+<div class="stage" data-clip="25690518091030781">
+  <video src="media/25690518091030781.mp4" muted loop playsinline preload="metadata"></video>
+  <div class="timeline">
+    <div class="band"><span class="bl">verified</span><div class="segs"><span class="seg" style="--c:#87966F" title="0.0-5.0 s: Locomotion"><span>Locomotion</span></span><span class="seg excluded" title="5.0-10.0 s: not_covered"><span>excluded</span></span></div></div>
+    <div class="band"><span class="bl">model</span><div class="segs"><button class="seg" data-at="0.0" style="--c:#87966F" title="0.0-5.0 s: Locomotion 0.48"><span>Locomotion</span></button><button class="seg" data-at="5.0" style="--c:#87966F" title="5.0-10.0 s: Locomotion 0.49"><span>Locomotion</span></button></div></div>
+  </div>
+  <div class="readout"><b class="now">-</b><span class="meta"></span></div>
+</div>
+<div class="stage" data-clip="25690519195143424">
+  <video src="media/25690519195143424.mp4" muted loop playsinline preload="metadata"></video>
+  <div class="timeline">
+    <div class="band"><span class="bl">verified</span><div class="segs"><span class="seg excluded" title="0.0-5.0 s: not_covered"><span>excluded</span></span><span class="seg excluded" title="5.0-10.0 s: not_covered"><span>excluded</span></span><span class="seg excluded" title="10.0-15.0 s: non_class_label"><span>excluded</span></span><span class="seg excluded" title="15.0-20.0 s: non_class_label"><span>excluded</span></span><span class="seg excluded" title="20.0-25.0 s: not_covered"><span>excluded</span></span><span class="seg" style="--c:#284236" title="25.0-30.0 s: Resting"><span>Resting</span></span><span class="seg" style="--c:#284236" title="30.0-35.0 s: Resting"><span>Resting</span></span><span class="seg" style="--c:#284236" title="35.0-40.0 s: Resting"><span>Resting</span></span></div></div>
+    <div class="band"><span class="bl">model</span><div class="segs"><button class="seg" data-at="0.0" style="--c:#284236" title="0.0-5.0 s: Resting 0.80"><span>Resting</span></button><button class="seg" data-at="5.0" style="--c:#284236" title="5.0-10.0 s: Resting 0.84"><span>Resting</span></button><button class="seg" data-at="10.0" style="--c:#284236" title="10.0-15.0 s: Resting 0.84"><span>Resting</span></button><button class="seg" data-at="15.0" style="--c:#284236" title="15.0-20.0 s: Resting 0.87"><span>Resting</span></button><button class="seg" data-at="20.0" style="--c:#284236" title="20.0-25.0 s: Resting 0.85"><span>Resting</span></button><button class="seg" data-at="25.0" style="--c:#284236" title="25.0-30.0 s: Resting 0.86"><span>Resting</span></button><button class="seg" data-at="30.0" style="--c:#284236" title="30.0-35.0 s: Resting 0.85"><span>Resting</span></button><button class="seg" data-at="35.0" style="--c:#284236" title="35.0-40.0 s: Resting 0.84"><span>Resting</span></button></div></div>
+  </div>
+  <div class="readout"><b class="now">-</b><span class="meta"></span></div>
+</div>
+      <div class="readout"><span>Upper band is the verified annotation, lower band is what the model
+      predicted. Grey windows cross an annotation boundary or a Transition, so the evaluation
+      excludes them. Click a lower segment to jump to that window.</span></div>
+    </div>
+    <div>
+      <p>Every five-second window is classified and shown against the clip's own timecodes.
+      The lower band is the model's prediction, the upper band is the verified annotation.</p>
+      <p>Three validation clips, one per class. The test clips are scored once in the evaluation
+      and are not shown here.</p>
+      <p>The page plays precomputed output. It needs a browser, not this project's GPU.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">02</span>Held-out behavior classification</h2>
+  <p>15 locked test windows over 8 clips. The threshold was chosen on the validation
+  windows and the test clips were decoded and scored once, after it was fixed.</p>
+  <div class="big">
+    <div><b>0.949</b><span>macro F1 over 3 classes</span></div>
+    <div><b>0</b><span>abstentions</span></div>
+    <div><b>0.933</b><span>accuracy over decided windows</span></div>
+  </div>
+  <table>
+    <thead><tr><th>Behavior</th><th>Support</th><th>Precision</th><th>Recall</th><th>F1</th></tr></thead>
+    <tbody><tr><td>Eating</td><td>7</td><td>1.000</td><td>0.857</td><td>0.923</td></tr>
+<tr><td>Locomotion</td><td>2</td><td>1.000</td><td>1.000</td><td>1.000</td></tr>
+<tr><td>Resting</td><td>6</td><td>0.857</td><td>1.000</td><td>0.923</td></tr></tbody>
+  </table>
+  <table>
+    <thead><tr><th>true \ pred</th><th class=num>Eating</th><th class=num>Locomotion</th><th class=num>Resting</th><th class=num>abstain</th></tr></thead>
+    <tbody><tr><td>Eating</td><td class=num>6</td><td class=num>0</td><td class=num>1</td><td class=num>0</td></tr>
+<tr><td>Locomotion</td><td class=num>0</td><td class=num>2</td><td class=num>0</td><td class=num>0</td></tr>
+<tr><td>Resting</td><td class=num>0</td><td class=num>0</td><td class=num>6</td><td class=num>0</td></tr></tbody>
+  </table>
+</section>
+
+<section>
+  <div class="row">
+    <div>
+      <h2><span class="num">03</span>YOLO detection</h2>
+      <div class="big">
+        <div><b>0.537</b><span>mAP50 on validation</span></div>
+        <div><b>59%</b><span>held-out frames where the animal is found</span></div>
+      </div>
+      <p>No bounding box was drawn by hand. A per-clip background model proposes the boxes,
+      116 of 408 were audited visually and 113 contained the animal, then YOLO trains on them.
+      The detector does not carry across recording days, so the demo falls back to the per-clip
+      model and the box colour on the video says which one fired.</p>
+      <p><a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/TASKS-2-AND-3.md">Tasks 2 and 3 report</a></p>
+    </div>
+    <div>
+      <h2><span class="num">04</span>Silhouette features</h2>
+      <div class="big">
+        <div><b>0.422</b><span>macro F1, locked test</span></div>
+        <div><b>0.190</b><span>majority-guess baseline</span></div>
+      </div>
+      <p>Keypoints are replaced by four silhouette features: body angle, head angle, image
+      speed and limb extent. The gain over the majority guess is in the rare classes, not in
+      getting most windows right.</p>
+      <p><a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/FEATURES.md">The four features</a></p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">05</span>What this does not prove</h2>
+  <div class="note">
+    <p>The test split holds 15 windows, so a single window moves macro F1 by several
+    points. The validation split is perfectly separated, which says the split is easy, not that
+    the classifier generalizes.</p>
+    <p>Task 2's detector fires on 59 percent of held-out frames and about
+    half of those boxes sit on the animal.</p>
+    <p>Task 3's features are not keypoints. Body angle and head angle are two axes of one blob,
+    and 7 of the 15 test windows have no
+    silhouette at all, so their rows are the training median rather than measured geometry.</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">05</span>Reproduce</h2>
+  <pre>python3 -m pip install -r requirements.txt
+python3 scripts/evaluate.py
+python3 scripts/demo_all.py data/raw/Eating/25690519193547292.mp4
+python3 scripts/build_site.py</pre>
+  <p><a href="CMZ-Phase-2-Presentation.pdf">Phase 2 deck (PDF)</a> ·
+  <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection">Repository</a> ·
+  <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/EVALUATION-REPORT.md">Evaluation report</a> ·
+  <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/TASKS-2-AND-3.md">Tasks 2 and 3</a></p>
+</section>
+
+<footer>Built 2026-10-29 from commit b678a90 by <code>scripts/build_site.py</code>.
+Numbers come from <code>outputs/evaluation.json</code> and the pipeline reports.</footer>
+</div>
+<script>
+const CLIPS = [{"id":"25690519193547292","path":"/home/prab/Documents/cmu/image_processing/group/civet-behavior-detection/data/raw/Eating/25690519193547292.mp4","group":"Eating","duration":68.84,"rendered_s":40.0,"windows":[{"start":0.0,"end":5.0,"label":"Eating","leaned":"Eating","confidence":0.573,"probabilities":[0.573,0.353,0.074],"verified":null,"excluded":"not_covered","box":[1026,752,1509,938],"source":"yolo","detector_conf":0.901,"features":{"body_angle_deg":21.8,"head_angle_deg":29.7,"speed_px_s":75.8,"limb_extent_px":178.5,"box_area_px":85904.0}},{"start":5.0,"end":10.0,"label":"Eating","leaned":"Eating","confidence":0.706,"probabilities":[0.706,0.264,0.03],"verified":null,"excluded":"not_covered","box":[750,588,882,766],"source":"motion","detector_conf":0.0,"features":{"body_angle_deg":50.2,"head_angle_deg":71.1,"speed_px_s":42.0,"limb_extent_px":109.9,"box_area_px":27840.0}},{"start":10.0,"end":15.0,"label":"Eating","leaned":"Eating","confidence":0.71,"probabilities":[0.71,0.252,0.038],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}},{"start":15.0,"end":20.0,"label":"Eating","leaned":"Eating","confidence":0.706,"probabilities":[0.706,0.264,0.03],"verified":"Eating","excluded":"","box":[644,368,700,408],"source":"motion","detector_conf":0.0,"features":{"body_angle_deg":124.9,"head_angle_deg":43.6,"speed_px_s":38.1,"limb_extent_px":51.9,"box_area_px":4188.0}},{"start":20.0,"end":25.0,"label":"Eating","leaned":"Eating","confidence":0.698,"probabilities":[0.698,0.257,0.045],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":93.8,"head_angle_deg":21.9,"speed_px_s":15.7,"limb_extent_px":59.9,"box_area_px":4834.0}},{"start":25.0,"end":30.0,"label":"Eating","leaned":"Eating","confidence":0.647,"probabilities":[0.647,0.318,0.036],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}},{"start":30.0,"end":35.0,"label":"Eating","leaned":"Eating","confidence":0.686,"probabilities":[0.686,0.281,0.032],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}},{"start":35.0,"end":40.0,"label":"Eating","leaned":"Eating","confidence":0.666,"probabilities":[0.666,0.296,0.039],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}}]},{"id":"25690518091030781","path":"/home/prab/Documents/cmu/image_processing/group/civet-behavior-detection/data/raw/Locomotion/25690518091030781.mp4","group":"Locomotion","duration":10.24,"rendered_s":10.0,"windows":[{"start":0.0,"end":5.0,"label":"Locomotion","leaned":"Locomotion","confidence":0.485,"probabilities":[0.108,0.485,0.407],"verified":"Locomotion","excluded":"","box":[541,892,1019,992],"source":"yolo","detector_conf":0.701,"features":{"body_angle_deg":150.1,"head_angle_deg":76.0,"speed_px_s":287.9,"limb_extent_px":159.1,"box_area_px":85142.0}},{"start":5.0,"end":10.0,"label":"Locomotion","leaned":"Locomotion","confidence":0.488,"probabilities":[0.069,0.488,0.443],"verified":null,"excluded":"not_covered","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":140.4,"head_angle_deg":144.4,"speed_px_s":187.6,"limb_extent_px":102.9,"box_area_px":43052.0}}]},{"id":"25690519195143424","path":"/home/prab/Documents/cmu/image_processing/group/civet-behavior-detection/data/raw/Resting/25690519195143424.mp4","group":"Resting","duration":122.24,"rendered_s":40.0,"windows":[{"start":0.0,"end":5.0,"label":"Resting","leaned":"Resting","confidence":0.802,"probabilities":[0.024,0.174,0.802],"verified":null,"excluded":"not_covered","box":[854,186,1070,284],"source":"motion","detector_conf":0.0,"features":{"body_angle_deg":179.6,"head_angle_deg":159.1,"speed_px_s":1.6,"limb_extent_px":98.0,"box_area_px":22000.0}},{"start":5.0,"end":10.0,"label":"Resting","leaned":"Resting","confidence":0.837,"probabilities":[0.021,0.142,0.837],"verified":null,"excluded":"not_covered","box":[783,144,1041,312],"source":"yolo","detector_conf":0.839,"features":{"body_angle_deg":9.3,"head_angle_deg":123.5,"speed_px_s":22.2,"limb_extent_px":138.2,"box_area_px":53460.0}},{"start":10.0,"end":15.0,"label":"Resting","leaned":"Resting","confidence":0.837,"probabilities":[0.026,0.137,0.837],"verified":null,"excluded":"non_class_label","box":[855,134,1089,304],"source":"yolo","detector_conf":0.805,"features":{"body_angle_deg":169.5,"head_angle_deg":108.0,"speed_px_s":14.1,"limb_extent_px":165.8,"box_area_px":40584.0}},{"start":15.0,"end":20.0,"label":"Resting","leaned":"Resting","confidence":0.866,"probabilities":[0.024,0.11,0.866],"verified":null,"excluded":"non_class_label","box":[871,171,1057,307],"source":"yolo","detector_conf":0.762,"features":{"body_angle_deg":6.0,"head_angle_deg":37.1,"speed_px_s":15.9,"limb_extent_px":129.2,"box_area_px":28600.0}},{"start":20.0,"end":25.0,"label":"Resting","leaned":"Resting","confidence":0.854,"probabilities":[0.02,0.127,0.854],"verified":null,"excluded":"not_covered","box":[860,182,1031,300],"source":"yolo","detector_conf":0.588,"features":{"body_angle_deg":176.2,"head_angle_deg":17.4,"speed_px_s":4.9,"limb_extent_px":95.4,"box_area_px":16920.0}},{"start":25.0,"end":30.0,"label":"Resting","leaned":"Resting","confidence":0.864,"probabilities":[0.022,0.114,0.864],"verified":"Resting","excluded":"","box":[946,184,1042,252],"source":"motion","detector_conf":0.496,"features":{"body_angle_deg":148.8,"head_angle_deg":82.4,"speed_px_s":17.5,"limb_extent_px":76.8,"box_area_px":8402.0}},{"start":30.0,"end":35.0,"label":"Resting","leaned":"Resting","confidence":0.854,"probabilities":[0.024,0.123,0.854],"verified":"Resting","excluded":"","box":[851,186,1054,301],"source":"yolo","detector_conf":0.838,"features":{"body_angle_deg":160.1,"head_angle_deg":57.8,"speed_px_s":7.8,"limb_extent_px":68.9,"box_area_px":6194.0}},{"start":35.0,"end":40.0,"label":"Resting","leaned":"Resting","confidence":0.836,"probabilities":[0.025,0.139,0.836],"verified":"Resting","excluded":"","box":[850,187,1055,302],"source":"yolo","detector_conf":0.711,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}}]}];
+const stages = [...document.querySelectorAll('.stage')];
+const tabs = [...document.querySelectorAll('.tab')];
+let active = CLIPS[0].id;
+
+function show(id) {
+  active = id;
+  tabs.forEach(t => t.classList.toggle('on', t.dataset.clip === id));
+  stages.forEach(s => {
+    const on = s.dataset.clip === id;
+    s.classList.toggle('on', on);
+    const v = s.querySelector('video');
+    if (on) { v.play().catch(() => {}); } else { v.pause(); v.currentTime = 0; }
+  });
+  paint();
+}
+
+function rowsOf(id) {
+  const clip = CLIPS.find(c => c.id === active);
+  return clip.windows;
+}
+
+function paint() {
+  const stage = stages.find(s => s.dataset.clip === active);
+  const video = stage.querySelector('video');
+  const rows = rowsOf(active);
+  const index = rows.findIndex(r => video.currentTime >= r.start && video.currentTime < r.end);
+  const at = index < 0 ? rows.length - 1 : index;
+  const row = rows[at];
+  stage.querySelectorAll('.seg').forEach(seg => seg.classList.remove('current'));
+  stage.querySelectorAll('.segs').forEach(segs => segs.children[at].classList.add('current'));
+  stage.querySelector('b.now').textContent = `${row.label} ${row.confidence.toFixed(2)}`;
+  stage.querySelector('.meta').textContent =
+    `${row.start.toFixed(0)}-${row.end.toFixed(0)} s · verified ${row.verified || 'excluded from scoring'}` +
+    ` · box ${row.source}` +
+    (row.features.speed_px_s === null ? ' · no silhouette' : ` · speed ${row.features.speed_px_s} px/s`) +
+    (row.excluded ? ` · not scored: ${row.excluded.replace('_', ' ')}` : '');
+}
+
+tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.clip)));
+stages.forEach(s => {
+  s.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', () => {
+    s.querySelector('video').currentTime = Number(seg.dataset.at) + 0.4;
+    paint();
+  }));
+  s.querySelector('video').addEventListener('timeupdate', paint);
+});
+show(CLIPS[0].id);
+</script>
+</body>
+</html>
