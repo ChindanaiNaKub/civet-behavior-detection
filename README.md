@@ -12,6 +12,7 @@ Tasks 2 and 3 were added to the scope on 2026-10-26, when the professor confirme
 
 ## Start here
 
+- [Live demo site](https://chindanainakub.github.io/civet-behavior-detection/) — plays three precomputed validation clips with the prediction timeline and the reported numbers, on any machine with a browser
 - [คู่มือหน้าตรวจสำหรับ Windows / Fedora Linux](docs/REVIEWER-QUICKSTART.md)
 - [Gold review handoff: second reviewer, reconciliation and test lock](docs/GOLD-REVIEW-HANDOFF.md)
 - [Baseline training and clip demo](docs/BASELINE-DEMO.md)
@@ -105,6 +106,12 @@ python3 scripts/features.py          # four silhouette features plus classifier
 python3 scripts/demo_all.py data/raw/Eating/25690519193422801.mp4
 ```
 
+9. Render the presentation site. This is the page that GitHub Pages publishes: three annotated clips with the verified and predicted bands, the held-out numbers read from `outputs/evaluation.json`, and the Task 2 and Task 3 headlines read from the reports.
+
+```
+python3 scripts/build_site.py
+```
+
 The gold set is the eight clips in `data/gold-clips.txt`, which are also the test split (ADR 0008). Two different people label them blind, each without opening the other's file, `data/annotations.csv` or `outputs/prelabel/`. `review.py` needs only the Python standard library.
 
 First annotator, who also redoes the two clips that moved into test (`--redo`) so the page serves them again:
@@ -171,6 +178,7 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 - `scripts/features.py` — Task 3 silhouette features and the small classifier over them.
 - `scripts/demo_all.py` — one command for all three tasks on one clip: behavior, detector box and crop, and the four features.
 - `scripts/metrics.py` — class metrics that count an abstention as a miss.
+- `scripts/build_site.py` — renders the demo clips with the prediction and verified bands burned in and writes `site/`, the static page that GitHub Pages publishes.
 - `requirements.txt` — the pinned versions the pipeline was run with.
 - `docs/EVALUATION-REPORT.md` — the held-out result, coverage, agreement, error example and limits.
 - `docs/PHASE-2-PLAN.md` — schedule, workstreams, evaluation, and risks.
