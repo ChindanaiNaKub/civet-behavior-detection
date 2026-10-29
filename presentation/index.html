@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three tasks, one animal, one pipeline · CMZ Phase 2</title>
+<meta name="description" content="Civet behavior detection: short-clip classification, YOLO detection and silhouette features.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23284236'/%3E%3Ccircle cx='50' cy='50' r='21' fill='%23BC4527'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/reveal/reveal.css">
+<link rel="stylesheet" href="deck.css">
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 01 · cover -->
+<section class="slide">
+  <div class="cover">
+    <div class="cover-body">
+      <div class="kicker">CMZ · Phase 2 · October 2026</div>
+      <h1>Three tasks,<br>one animal,<br><em>one pipeline.</em></h1>
+      <p class="lede">Short-clip behavior classification, detection and silhouette features for a zoo civet.</p>
+      <div class="cover-meta">
+        <span>Project team, CMU</span>
+        <span>Camera 02 · 19 May 2026</span>
+      </div>
+    </div>
+    <div class="cover-media">
+      <img src="assets/img/cover.jpg" alt="A civet standing at a feeding bowl, seen from an overhead camera">
+    </div>
+  </div>
+  <aside class="notes">
+    Open on the animal, not the model. One civet, four fixed cameras, three tasks from the brief, and a single pipeline that ends in a behavior timeline. Timing: 30 seconds.
+  </aside>
+</section>
+
+<!-- 02 · divider motivation -->
+<section class="slide divider is-dark">
+  <div class="numeral-clip"><span class="numeral">01</span></div>
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Motivation</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2>A keeper cannot watch every hour.</h2>
+      <p class="note">Why the project exists</p>
+    </div>
+    <div class="foot"><span>Motivation</span></div>
+  </div>
+  <aside class="notes">
+    Start with the human problem. A zookeeper is responsible for an animal's welfare and cannot sit in front of four camera feeds all night. Timing: 15 seconds.
+  </aside>
+</section>
+
+<!-- 03 · setting -->
+<section class="slide">
+  <div class="split">
+    <div class="pad">
+      <div class="head">
+        <div class="kicker">01 / Motivation</div>
+        <div class="head-rule"></div>
+        <div class="head-meta">CMZ / Phase 2</div>
+      </div>
+      <div class="body">
+        <h2 class="title">Four rooms.<br>One animal.<br>Four cameras.</h2>
+        <p class="sub">The project setting from the brief: a civet enclosure observed by fixed cameras, day and night. Four rooms belong to one proposed monitoring context.</p>
+        <div class="stats" style="margin-top:34px">
+          <div class="stat"><b>4</b><span>rooms</span></div>
+          <div class="stat"><b>4</b><span>cameras</span></div>
+          <div class="stat"><b>1</b><span>focal animal</span></div>
+        </div>
+        <div class="note-box">A design setting, not verified coverage. The clips we received do not map to specific rooms.</div>
+      </div>
+      <div class="foot"><span>Motivation</span></div>
+    </div>
+    <figure class="split-media">
+      <img src="assets/img/frame-day.jpg" alt="Civet entering a doorway in daylight, Camera 02" style="object-position:30% 50%">
+      <figcaption>Camera 02 · 19 May 2026 · 15:51:10</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">
+    This is the setting the brief describes, not something our footage proves. Say the caveat out loud: we do not know which room each clip came from, so room coverage is a Phase 1 design assumption. Timing: 45 seconds.
+  </aside>
+</section>
+
+<!-- 04 · what a keeper reads -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">01 / Motivation</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">Welfare is read off behavior.</h2>
+      <p class="sub" style="margin-bottom:22px">Three things a keeper watches for, and each one is a duration, not a snapshot.</p>
+      <div class="rows">
+        <div class="row">
+          <span class="n">01</span>
+          <h4>Is it eating?</h4>
+          <p>Food-directed intake at the bowl. <b>A drop in feeding time is an early signal.</b></p>
+        </div>
+        <div class="row">
+          <span class="n">02</span>
+          <h4>Is it moving?</h4>
+          <p>Travel around the enclosure. <b>Lethargy shows up as fewer and shorter bouts.</b></p>
+        </div>
+        <div class="row">
+          <span class="n">03</span>
+          <h4>Is it resting normally?</h4>
+          <p>Sustained inactivity. <b>Rest that crowds out the other two is also a signal.</b></p>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:26px">Premise of this project: the comparison is the animal's own baseline, not a population average.</div>
+    </div>
+    <div class="foot"><span>Motivation</span></div>
+  </div>
+  <aside class="notes">
+    Frame this as the question a keeper actually asks. Behavior over time is the health signal, and a change against the same animal's baseline is what triggers a look. Keep the claims general: our project does not settle any welfare question. Timing: 45 seconds.
+  </aside>
+</section>
+
+<!-- 05 · scale -->
+<section class="slide">
+  <div class="split">
+    <div class="pad">
+      <div class="head">
+        <div class="kicker">01 / Motivation</div>
+        <div class="head-rule"></div>
+        <div class="head-meta">CMZ / Phase 2</div>
+      </div>
+      <div class="body">
+        <h2 class="title tight">Our whole dataset is 17.5 minutes.</h2>
+        <p class="sub">A four-camera installation produces 96 hours a day. Hand review does not scale past a demonstration.</p>
+        <div class="stats stat-strip" style="margin-top:28px">
+          <div class="stat"><b>22</b><span>source clips</span></div>
+          <div class="stat"><b>1,052</b><span>seconds of footage</span></div>
+          <div class="stat"><b>26,295</b><span>frames at 25 fps</span></div>
+          <div class="stat"><b class="rust">0.3%</b><span>of one day, four cameras</span></div>
+        </div>
+        <div class="note-box">17.5 minutes is watchable. Seven days of four cameras is 672 hours.</div>
+      </div>
+      <div class="foot"><span>Motivation</span></div>
+    </div>
+    <figure class="split-media">
+      <video src="assets/img/clip-eating.mp4" muted loop playsinline data-autoplay preload="metadata" style="object-position:36% 50%"></video>
+      <figcaption>Eating · 18 s loop from clip 547292</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">
+    The numbers are from the delivered footage: 22 clips, 1,052 seconds, 26,295 frames at 25 fps. Four cameras for 24 hours is 5,760 minutes, so our entire dataset is 0.3 percent of one day. That gap is the reason to automate. Timing: 40 seconds.
+  </aside>
+</section>
+
+<!-- 06 · the three questions -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">01 / Motivation</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title">Can the machine do the looking?</h2>
+      <p class="sub" style="margin-bottom:26px">Three tasks from the brief, on the same footage, ending in one behavior timeline.</p>
+      <div class="stepper" style="grid-template-columns:repeat(3,1fr)">
+        <div class="step">
+          <div class="k">TASK 2 · DETECTION</div>
+          <b>See</b>
+          <span>Find and box the civet in every sampled frame</span>
+        </div>
+        <div class="step">
+          <div class="k">TASK 1 · CLASSIFICATION</div>
+          <b>Name</b>
+          <span>Label each five-second window Eating, Locomotion or Resting</span>
+        </div>
+        <div class="step">
+          <div class="k">TASK 3 · ANALYSIS</div>
+          <b>Measure</b>
+          <span>Body angle, head angle, speed and limb extent from a silhouette</span>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:30px">Same windows, same timecodes. That is the whole design idea, and the rest of the talk tests whether it holds.</div>
+    </div>
+    <div class="foot"><span>Motivation</span></div>
+  </div>
+  <aside class="notes">
+    Give the roadmap in one breath: detect the animal, name the behavior over a window, measure its shape. Everything after this slide is evidence for one of the three. Timing: 40 seconds.
+  </aside>
+</section>
+
+<!-- 07 · divider scope -->
+<section class="slide divider is-dark">
+  <div class="numeral-clip"><span class="numeral">02</span></div>
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Scope</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2>What the brief asked.<br>What we built.</h2>
+      <p class="note">Two substitutions, both recorded</p>
+    </div>
+    <div class="foot"><span>Scope</span></div>
+  </div>
+  <aside class="notes">
+    Two substitutions to declare before any number: Climbing is out of scope with the instructor's agreement, and Task 3 measures silhouettes instead of keypoints. Neither is hidden in a footnote. Timing: 20 seconds.
+  </aside>
+</section>
+
+<!-- 08 · scope table -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">02 / Scope</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">Three tasks, two substitutions.</h2>
+      <table class="data" style="margin-top:10px">
+        <thead>
+          <tr><th style="width:150px">Task</th><th style="width:250px">Brief path</th><th>What we built</th><th class="num" style="width:230px">Measured</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Task 1</strong><br><span style="color:var(--muted);font-size:14px">Classification</span></td>
+            <td class="dim">Walking · Eating<br>Resting · Climbing</td>
+            <td>Five-second windows, three classes, one frame CNN over an ImageNet backbone</td>
+            <td class="num">Macro F1 <span style="color:var(--rust)">0.949</span><br><span class="dim" style="font-size:13px">15 held-out windows</span></td>
+          </tr>
+          <tr>
+            <td><strong>Task 2</strong><br><span style="color:var(--muted);font-size:14px">Detection</span></td>
+            <td class="dim">Video → frames →<br>YOLO labels → train</td>
+            <td>Labels from a per-clip background model. No hand-drawn box at any point</td>
+            <td class="num">mAP50 <span style="color:var(--rust)">0.537</span><br><span class="dim" style="font-size:13px">animal found in 59% of frames</span></td>
+          </tr>
+          <tr>
+            <td><strong>Task 3</strong><br><span style="color:var(--muted);font-size:14px">Analysis</span></td>
+            <td class="dim">Pose → keypoints →<br>four features</td>
+            <td>Silhouette geometry with the same four feature names</td>
+            <td class="num">Macro F1 <span style="color:var(--rust)">0.422</span><br><span class="dim" style="font-size:13px">locked test windows</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note-box" style="margin-top:26px">Climbing dropped with instructor confirmation (ADR 0007). Task 3 is a silhouette proxy, not keypoints (ADR 0009).</div>
+    </div>
+    <div class="foot"><span>Scope</span></div>
+  </div>
+  <aside class="notes">
+    Read the right column only, one row at a time. The left column is what the brief asked for. The caveat line is the part a reviewer will check, so do not skip it. Timing: 60 seconds.
+  </aside>
+</section>
+
+<!-- 09 · divider task 1 -->
+<section class="slide divider is-dark">
+  <div class="numeral-clip"><span class="numeral">03</span></div>
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Task 1 · Classification</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2>Behavior,<br>window by window.</h2>
+      <p class="note">The evidence base</p>
+    </div>
+    <div class="foot"><span>Task 1</span></div>
+  </div>
+  <aside class="notes">
+    Task 1 is the part with a real reference label, so it gets the most scrutiny. Timing: 15 seconds.
+  </aside>
+</section>
+
+<!-- 10 · data flow -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">03 / Task 1 · Data</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">138 labelled windows is the whole evidence base.</h2>
+      <div class="stats stat-strip" style="margin-top:20px">
+        <div class="stat"><b>22</b><span>source clips</span></div>
+        <div class="stat"><b>201</b><span>five-second windows</span></div>
+        <div class="stat"><b>138</b><span>labelled windows</span></div>
+        <div class="stat"><b style="font-size:40px;line-height:1.3;white-space:nowrap">93 · 30 · 15</b><span>train · val · test</span></div>
+      </div>
+      <div class="rows" style="margin-top:34px">
+        <div class="row" style="grid-template-columns:54px 1fr">
+          <span class="n">01</span>
+          <p><b>Verified intervals.</b> One model class covers the whole span, so a window is kept only when its label is unambiguous.</p>
+        </div>
+        <div class="row" style="grid-template-columns:54px 1fr">
+          <span class="n">02</span>
+          <p><b>Dropped windows.</b> 63 of 201: 46 not covered completely by one interval, 17 touching a Transition or Uncertain span.</p>
+        </div>
+        <div class="row" style="grid-template-columns:54px 1fr">
+          <span class="n">03</span>
+          <p><b>Split by whole clip.</b> No frame from a test clip ever appears in training.</p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Task 1 · Data</span></div>
+  </div>
+  <aside class="notes">
+    Land on 138. Two hundred and one windows exist; 63 are dropped because a label would be a guess. Say why the split is by clip: adjacent frames from the same animal on the same day are nearly the same image, so a frame-level split would leak. Timing: 60 seconds.
+  </aside>
+</section>
+
+<!-- 11 · test lock -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">03 / Task 1 · The test lock</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">The test set was locked before it was read.</h2>
+      <p class="sub" style="margin-bottom:24px">Eight clips are the gold set and also the test split. Two people labelled them blind to each other, then reconciled.</p>
+      <div class="stepper" style="grid-template-columns:repeat(4,1fr)">
+        <div class="step">
+          <div class="k">PASS A</div>
+          <b>Blind</b>
+          <span>First annotator, eight gold clips</span>
+        </div>
+        <div class="step">
+          <div class="k">PASS B</div>
+          <b>Blind</b>
+          <span>Second annotator, same clips, no shared answers</span>
+        </div>
+        <div class="step">
+          <div class="k">20 OCT</div>
+          <b>0.597</b>
+          <span>Interval Dice between the passes, then reconciled</span>
+        </div>
+        <div class="step">
+          <div class="k">21 OCT</div>
+          <b>Once</b>
+          <span>Signed, locked, decoded and scored</span>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:30px">Disagreement was reconciled into one interval set. The test is scored once, so no decision downstream of it could shape the model.</div>
+    </div>
+    <div class="foot"><span>Task 1 · The test lock</span></div>
+  </div>
+  <aside class="notes">
+    This is the credibility slide. Two independent passes, a Dice of 0.597, reconciliation, a signed split, and one read of the test. If someone asks how the threshold was chosen: on validation windows, before the test was touched. Timing: 50 seconds.
+  </aside>
+</section>
+
+<!-- 12 · result -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">03 / Task 1 · Result</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight" style="margin-bottom:20px">One error in fifteen held-out windows.</h2>
+      <div class="matrix-wrap">
+        <div>
+          <div class="stat" style="padding:0;border:0">
+            <b class="rust" style="font-size:96px">0.949</b>
+            <span style="margin-top:8px">macro F1 · 15 held-out windows</span>
+          </div>
+          <div class="rows" style="margin-top:18px">
+            <div class="row" style="grid-template-columns:1fr;padding:10px 0">
+              <p><b>0</b> abstentions. Accuracy over decided windows <b>0.933</b>.</p>
+            </div>
+            <div class="row" style="grid-template-columns:1fr;padding:10px 0">
+              <p><b>1</b> miss: an Eating window predicted Resting at 0.847.</p>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3 class="mini">Confusion matrix · rows true, columns predicted</h3>
+          <div class="matrix">
+            <div class="mh rowhead"></div>
+            <div class="mh">Eating</div><div class="mh">Locomotion</div><div class="mh">Resting</div><div class="mh">Total</div>
+
+            <div class="ml">Eating · 7</div>
+            <div class="mv hit">6</div><div class="mv">0</div><div class="mv err">1</div><div class="mv total">7</div>
+
+            <div class="ml">Locomotion · 2</div>
+            <div class="mv">0</div><div class="mv hit">2</div><div class="mv">0</div><div class="mv total">2</div>
+
+            <div class="ml">Resting · 6</div>
+            <div class="mv">0</div><div class="mv">0</div><div class="mv hit">6</div><div class="mv total">6</div>
+
+            <div class="mtot" style="padding-top:10px">Predicted</div>
+            <div class="mv total">6</div><div class="mv total">2</div><div class="mv total">7</div><div class="mv total">15</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Task 1 · Result</span></div>
+  </div>
+  <aside class="notes">
+    Say the number, then immediately say what it rests on. Fifteen windows, and the single error is the rust cell. Do not ad-lib a second test score; this was read once. Timing: 45 seconds.
+  </aside>
+</section>
+
+<!-- 13 · the one error -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">03 / Task 1 · The error</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">One window, two plausible explanations.</h2>
+      <div class="split" style="grid-template-columns:1fr 1fr;gap:46px;height:auto">
+        <div>
+          <div class="lane-card dark" style="padding:24px 26px">
+            <div class="tag">Clip 25690519193808204</div>
+            <p style="font-size:26px;line-height:1.3;margin-top:10px">Window 40–45 s</p>
+            <p style="font-family:var(--mono);font-size:12px;color:rgba(243,238,223,.7);margin-top:12px;letter-spacing:.06em">LABELLED Eating → PREDICTED Resting 0.847</p>
+          </div>
+          <div class="note-box" style="margin-top:22px">The label was not changed after the test was read.</div>
+        </div>
+        <div style="padding-top:6px">
+          <div class="rows">
+            <div class="row" style="grid-template-columns:1fr;padding:12px 0">
+              <h4>A model miss</h4>
+              <p style="margin-top:6px">The animal is partly hidden, and a still head over a bowl looks like rest.</p>
+            </div>
+            <div class="row" style="grid-template-columns:1fr;padding:12px 0">
+              <h4>An annotation error</h4>
+              <p style="margin-top:6px">The boundary sits close to the edge of the interval, and five seconds is a coarse window.</p>
+            </div>
+          </div>
+          <p class="sub" style="margin-top:20px">With one read of the test set, we cannot separate the two.</p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Task 1 · The error</span></div>
+  </div>
+  <aside class="notes">
+    Show that the error is inspectable, not hand-waved. Both explanations are live, and honesty here is cheaper than a claim we would have to defend. Timing: 35 seconds.
+  </aside>
+</section>
+
+<!-- 14 · limits -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">03 / Task 1 · Limits</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">What 0.949 does not establish.</h2>
+      <div class="rows" style="margin-top:14px">
+        <div class="row">
+          <span class="n">01</span>
+          <h4>Fifteen windows</h4>
+          <p>Locomotion has <b>2</b>, and all <b>6</b> Resting windows come from one clip. A per-class score on that support is a baseline, not a stable estimate.</p>
+        </div>
+        <div class="row">
+          <span class="n">02</span>
+          <h4>Camera and class travel together</h4>
+          <p>Every Resting window is Camera 03 and nearly all Eating is Camera 02. <b>A score can come from the recording rather than the behavior.</b></p>
+        </div>
+        <div class="row">
+          <span class="n">03</span>
+          <h4>It is an upper bound</h4>
+          <p>0.949 describes these clips on these days. It is not an estimate of a new recording.</p>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:26px">Five clips and one camera per class is enough to show the pipeline works, not enough to claim it generalizes.</div>
+    </div>
+    <div class="foot"><span>Task 1 · Limits</span></div>
+  </div>
+  <aside class="notes">
+    Deliver this flat, without apology. The audience should leave believing 0.949 is real and believing it is small. The camera and class confound is the one a sharp reviewer will raise, so raise it first. Timing: 50 seconds.
+  </aside>
+</section>
+
+<!-- 15 · divider task 2 -->
+<section class="slide divider is-dark">
+  <div class="numeral-clip"><span class="numeral">04</span></div>
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Task 2 · Detection</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2>Nobody drew a box.</h2>
+      <p class="note">YOLO without annotation labour</p>
+    </div>
+    <div class="foot"><span>Task 2</span></div>
+  </div>
+  <aside class="notes">
+    The blocker for Task 2 was never the model. It was that no bounding boxes existed and nobody had two days to draw them. Timing: 15 seconds.
+  </aside>
+</section>
+
+<!-- 16 · what failed -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">04 / Task 2 · Attempts</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">The obvious detectors did not find the civet.</h2>
+      <div class="fails" style="margin-top:10px">
+        <div class="fail">
+          <span class="x">✕</span>
+          <h4>Pretrained YOLO11n<br><span style="color:var(--muted)">COCO classes, full frame</span></h4>
+          <p><b>Zero detections</b> of the animal. One potted plant at 0.344.</p>
+        </div>
+        <div class="fail">
+          <span class="x">✕</span>
+          <h4>Frame differencing<br><span style="color:var(--muted)">largest moving blob</span></h4>
+          <p>Locks onto <b>swaying foliage</b>, which moves more than a resting civet.</p>
+        </div>
+        <div class="fail">
+          <span class="x">✕</span>
+          <h4>Grounding DINO<br><span style="color:var(--muted)">open vocabulary, “a civet”</span></h4>
+          <p><b>40+ overlapping boxes</b>, top score 0.535 on empty floor.</p>
+        </div>
+        <div class="fail works">
+          <span class="x">✓</span>
+          <h4>Per-clip median background<br><span style="color:var(--muted)">with a persistence filter</span></h4>
+          <p>Keeps the animal and drops the foliage. <b>408 candidate boxes.</b></p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Task 2 · Attempts</span></div>
+  </div>
+  <aside class="notes">
+    Three failures, then the method that worked. The insight is that the cameras never move, so each clip contains its own clean background and the animal is the thing that differs from it. Timing: 50 seconds.
+  </aside>
+</section>
+
+<!-- 17 · what worked -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">04 / Task 2 · Method</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">The background model draws the boxes.</h2>
+      <p class="sub" style="margin-bottom:20px">Median frame per clip, a per-pixel noise threshold, a component in an animal-size band, and a box must persist for about a second.</p>
+      <div class="stepper">
+        <div class="step"><div class="k">01 · SAMPLE</div><b>1,061</b><span>frames at 1 fps across 22 clips</span></div>
+        <div class="step"><div class="k">02 · PROPOSE</div><b>470</b><span>candidate boxes from the background model</span></div>
+        <div class="step"><div class="k">03 · FILTER</div><b>408</b><span>kept after the one-second persistence rule</span></div>
+        <div class="step"><div class="k">04 · AUDIT</div><b>116</b><span>boxes reviewed on contact sheets</span></div>
+        <div class="step"><div class="k">05 · CHECK</div><b>113</b><span>were on the animal</span></div>
+      </div>
+      <div class="note-box" style="margin-top:28px">The 3 misses were empty floor, all in the last twelve seconds of one clip after the animal left the view.</div>
+    </div>
+    <div class="foot"><span>Task 2 · Method</span></div>
+  </div>
+  <aside class="notes">
+    Walk the loop once. The audit is the part that makes the labels credible: 113 of 116 were on the animal, and the three misses are explainable. Timing: 45 seconds.
+  </aside>
+</section>
+
+<!-- 18 · detector results -->
+<section class="slide">
+  <div class="split">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">04 / Task 2 · Result</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">The detector learns from its own labels.</h2>
+      <div class="stats stat-strip" style="margin-top:18px">
+        <div class="stat"><b>0.537</b><span>mAP50 · round 1 on seed labels</span></div>
+        <div class="stat"><b class="rust">0.499</b><span>mAP50 after self-training, untouched validation</span></div>
+      </div>
+      <div class="rows" style="margin-top:26px">
+        <div class="row" style="grid-template-columns:1fr 90px;padding:12px 0">
+          <p><b>59%</b> of held-out frames fire at confidence 0.25.</p>
+          <span class="n" style="text-align:right">138 / 235</span>
+        </div>
+        <div class="row" style="grid-template-columns:1fr;padding:12px 0">
+          <p><b>5 of 10</b> audited held-out boxes were on the animal.</p>
+        </div>
+      </div>
+      <div class="audit">
+        <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i>
+        <i class="fp"></i><i class="fp"></i><i class="fp"></i><i class="fp"></i><i class="fp"></i>
+        <span class="cap">5 on the animal · 5 not</span>
+      </div>
+      <div class="note-box" style="margin-top:22px">Round 2 scores 0.774 on its own validation, but 115 of those labels were partly written by round 1, so that number is not comparable.</div>
+    </div>
+    <div class="foot"><span>Task 2 · Result</span></div>
+  </div>
+  <figure class="split-media contain">
+    <img src="assets/img/detection.jpg" alt="Infrared frame with a YOLO box drawn around the civet">
+    <figcaption>YOLO box 0.66 · Camera 03 · 19 May 2026</figcaption>
+  </figure>
+  </div>
+  <aside class="notes">
+    Two numbers matter: 0.537 on the seed validation, and 0.499 after self-training measured on labels round 1 never wrote. The 0.774 is a trap, so name it before anyone else does. Timing: 55 seconds.
+  </aside>
+</section>
+
+<!-- 19 · divider task 3 -->
+<section class="slide divider is-dark">
+  <div class="numeral-clip"><span class="numeral">05</span></div>
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Task 3 · Analysis</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2>Four numbers<br>from a shape.</h2>
+      <p class="note">No keypoints, no pose model</p>
+    </div>
+    <div class="foot"><span>Task 3</span></div>
+  </div>
+  <aside class="notes">
+    The brief asks for pose estimation and keypoints. There is no civet pose model and no keypoint annotation, so we kept the four feature names and measured the silhouette instead. Timing: 15 seconds.
+  </aside>
+</section>
+
+<!-- 20 · features -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">05 / Task 3 · Features</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">Keypoints became a silhouette.</h2>
+      <div class="two-col">
+        <div>
+          <h3 class="mini">Median per class · training and validation windows with a silhouette</h3>
+          <table class="data">
+            <thead>
+              <tr><th>Feature</th><th class="num">Eating</th><th class="num">Locomotion</th><th class="num">Resting</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Body angle</td><td class="num">115°</td><td class="num">88°</td><td class="num">154°</td></tr>
+              <tr><td>Head angle</td><td class="num">113°</td><td class="num">49°</td><td class="num">96°</td></tr>
+              <tr><td>Movement speed</td><td class="num">17 px/s</td><td class="num">134 px/s</td><td class="num">2 px/s</td></tr>
+              <tr><td>Limb extent</td><td class="num">56 px</td><td class="num">148 px</td><td class="num">98 px</td></tr>
+            </tbody>
+          </table>
+          <p class="sub" style="font-size:15px;margin-top:14px">A silhouette cannot tell a head from a tail, and a still animal joins the background.</p>
+        </div>
+        <div>
+          <div class="stat" style="padding:0;border:0">
+            <b>0.479</b><span>validation macro F1</span>
+          </div>
+          <div class="stat" style="padding:0;border:0;margin-top:22px">
+            <b class="rust">0.422</b><span>test macro F1</span>
+          </div>
+          <div class="note-box" style="margin-top:20px">Resting scores <b>0</b> on test: 58 of 93 training windows have no silhouette at all.</div>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:20px">Per-class F1: Eating 0.267 · Locomotion 1.000 · Resting 0.000. Locomotion separates by an order of magnitude in speed.</div>
+    </div>
+    <div class="foot"><span>Task 3 · Features</span></div>
+  </div>
+  <aside class="notes">
+    The table is the honest part: head angle on Resting is 96 degrees because a resting animal has no reliable silhouette. Locomotion works because 134 px/s is an order of magnitude above the other two. Timing: 50 seconds.
+  </aside>
+</section>
+
+<!-- 21 · one command -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Demonstration</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight" style="margin-bottom:16px">One clip, three tasks, one command.</h2>
+      <pre class="term"><span class="dim">$ </span>python3 scripts/demo_all.py data/raw/Eating/25690519193422801.mp4
+
+<span class="dim">data/raw/Eating/25690519193422801.mp4  (50.0 s, 10 windows, abstain below 0.00)</span>
+<span class="dim">  start     end  T1           conf  T2 box               via     conf  crop         body  head   speed  limb</span>
+<span class="hl">   0.00    5.00</span>  Eating       0.73  408,462,606,528      motion  0.00  Eating      6 161       1    63
+<span class="hl">   5.00   10.00</span>  Eating       0.69  606,510,674,564      motion  0.37  Eating      25 16      23    52
+<span class="hl">  10.00   15.00</span>  Eating       0.69  632,472,700,550      motion  0.00  Eating      43 24      20    68
+<span class="hl">  15.00   20.00</span>  Eating       0.67  341,365,624,534      yolo    0.58  <span class="warn">Locomotion</span>  119 19      24    51
+
+detection: <span class="hl">10/10</span> windows found the animal (6 by the trained detector, 4 by the per-clip model)
+full-frame and crop labels agree on <span class="warn">4/10</span> windows</pre>
+      <p class="sub" style="margin-top:16px;font-size:15px">Validation clip. Output trimmed to the header, four data rows and the two summary lines.</p>
+    </div>
+    <div class="foot"><span>Demonstration</span></div>
+  </div>
+  <aside class="notes">
+    If a live demo is risky, this slide is the demo. Point at the same timecodes running across T1, T2 and T3, and at the one row where the crop disagrees with the full frame. Timing: 40 seconds.
+  </aside>
+</section>
+
+<!-- 22 · pipeline synthesis -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Synthesis</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight" style="margin-bottom:22px">One animal, one timeline.</h2>
+      <div class="lanes">
+        <div class="lane-col">
+          <div class="lane-label">Input</div>
+          <div class="lane-card dark">
+            <div class="tag">Footage</div>
+            <p>Video + conditions<br><span style="font-family:var(--mono);font-size:11px;color:rgba(243,238,223,.65)">clip · time · light · view</span></p>
+          </div>
+          <div class="lane-card">
+            <div class="tag">Grid</div>
+            <p>Five-second windows</p>
+          </div>
+        </div>
+        <div>
+          <div class="lane-label">Three tasks, the same windows</div>
+          <div class="lane-mid">
+            <div class="lane-card">
+              <div class="tag">Task 1 · classify</div>
+              <p>Behavior per window, with a confidence</p>
+            </div>
+            <div class="lane-card">
+              <div class="tag">Task 2 · detect</div>
+              <p>Box per frame, with a per-clip fallback when the detector is unsure</p>
+            </div>
+            <div class="lane-card">
+              <div class="tag">Task 3 · measure</div>
+              <p>Body angle, head angle, speed, limb extent</p>
+            </div>
+          </div>
+        </div>
+        <div class="lane-col">
+          <div class="lane-label">Output</div>
+          <div class="lane-card dark">
+            <div class="tag">Evidence</div>
+            <p>Timeline + summaries<br><span style="font-family:var(--mono);font-size:11px;color:rgba(243,238,223,.65)">bouts · duration · counts</span></p>
+          </div>
+          <div class="lane-card">
+            <div class="tag">Record</div>
+            <p>clip · start · end · behavior · confidence · conditions</p>
+          </div>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:26px">Every row keeps clip, start, end, behavior, confidence and condition flags, so any summary can be traced back to a timecode.</div>
+    </div>
+    <div class="foot"><span>Synthesis</span></div>
+  </div>
+  <aside class="notes">
+    This is the answer to the brief in one picture. The pipeline is not three separate projects stacked together: the same windows and timecodes flow through all three lanes into one traceable record. Timing: 45 seconds.
+  </aside>
+</section>
+
+<!-- 23 · boundaries -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Boundaries</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight" style="margin-bottom:8px">What this does not prove.</h2>
+      <div class="rows">
+        <div class="row" style="padding:11px 0">
+          <span class="n">01</span><h4>Fifteen test windows from five clips</h4>
+          <p>Locomotion has 2 and Resting takes 6 from one clip. A per-class score on that support is a baseline.</p>
+        </div>
+        <div class="row" style="padding:11px 0">
+          <span class="n">02</span><h4>Camera and class travel together</h4>
+          <p>A score can come from the recording rather than the behavior.</p>
+        </div>
+        <div class="row" style="padding:11px 0">
+          <span class="n">03</span><h4>The detector does not generalize</h4>
+          <p>It fails on the 2026-05-20 recording day, absent from training, and fires on a bright plant.</p>
+        </div>
+        <div class="row" style="padding:11px 0">
+          <span class="n">04</span><h4>Task 3 is a proxy</h4>
+          <p>No keypoints and no pose model. A still animal joins the median background, so most Resting windows have no features.</p>
+        </div>
+        <div class="row" style="padding:11px 0">
+          <span class="n">05</span><h4>One training seed</h4>
+          <p>Seed 0 only. No run-to-run spread, so the split between score and seed is unknown.</p>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:18px">And no human ground truth for detection: its quality is a counted visual audit, not mAP against truth.</p>
+    </div>
+    <div class="foot"><span>Boundaries</span></div>
+  </div>
+  <aside class="notes">
+    Five limits, one sentence each. This slide is the difference between a baseline and a claim. If time is short, keep items 1, 2 and 4. Timing: 50 seconds.
+  </aside>
+</section>
+
+<!-- 24 · next -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Next</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">Four changes that turn numbers into evidence.</h2>
+      <div class="rows" style="margin-top:14px">
+        <div class="row" style="grid-template-columns:54px 290px 1fr">
+          <span class="n">01</span><h4>Hold out a recording group</h4>
+          <p>Collect footage from sessions absent from training and repeat the evaluation, so the upper bound becomes an estimate.</p>
+        </div>
+        <div class="row" style="grid-template-columns:54px 290px 1fr">
+          <span class="n">02</span><h4>Widen per-class support</h4>
+          <p>Add Locomotion and Resting test clips from more than one clip per class before reading per-class differences.</p>
+        </div>
+        <div class="row" style="grid-template-columns:54px 290px 1fr">
+          <span class="n">03</span><h4>Calibrate abstention</h4>
+          <p>Choose the abstain threshold on a larger validation set or a separate calibration set, never on the test windows.</p>
+        </div>
+        <div class="row" style="grid-template-columns:54px 290px 1fr">
+          <span class="n">04</span><h4>Revisit Climbing and pose</h4>
+          <p>Only if verified footage and keypoint labels exist. Until then, three classes and silhouette features are the scope.</p>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Next</span></div>
+  </div>
+  <aside class="notes">
+    Point at the one change that matters most: a held-out recording group. The rest improve the baseline, but that one changes what the number means. Timing: 40 seconds.
+  </aside>
+</section>
+
+<!-- 25 · close -->
+<section class="slide">
+  <div class="close">
+    <div class="kicker">CMZ · Phase 2 · October 2026</div>
+    <p class="big" style="margin-top:24px">A reproducible baseline that states what it measured and <em>what it did not.</em></p>
+    <div class="thanks">
+      <b>Questions</b>
+      <span>Project team, CMU</span>
+      <span style="margin-left:auto">Code and reports: civet-behavior-detection</span>
+    </div>
+  </div>
+  <aside class="notes">
+    Close on the sentence, not on the scores. Then stop talking and let the room ask. Timing: 15 seconds.
+  </aside>
+</section>
+
+</div>
+</div>
+
+<script src="vendor/reveal/reveal.js"></script>
+<script src="vendor/reveal/plugin/notes/notes.js"></script>
+<script src="vendor/reveal/plugin/zoom/zoom.js"></script>
+<script src="vendor/reveal/plugin/search/search.js"></script>
+<script>
+Reveal.initialize({
+  width: 1280,
+  height: 720,
+  margin: 0,
+  minScale: 0.2,
+  maxScale: 1.8,
+  hash: true,
+  center: false,
+  controls: false,
+  progress: true,
+  slideNumber: false,
+  transition: 'fade',
+  transitionSpeed: 420,
+  backgroundTransition: 'fade',
+  overview: true,
+  plugins: [RevealNotes, RevealZoom, RevealSearch]
+});
+</script>
+</body>
+</html>
