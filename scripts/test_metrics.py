@@ -58,3 +58,47 @@ def test_best_threshold_keeps_the_threshold_at_zero_when_every_call_is_confident
     threshold, score = M.best_threshold(probabilities, ["A", "B"], ("A", "B"))
     assert threshold == 0.0
     assert score == pytest.approx(1.0)
+
+
+def test_max_abstain_never_exceeds_the_cap():
+    classes = ("A", "B")
+    # Eight confident, correct calls plus two at 0.55: one right, one wrong. The
+    # wrong call is a false positive on the single-example class A, so the
+    # unconstrained best macro F1 abstains on both; the cap allows at most one
+    # abstention, and no threshold yields exactly one, so it decides everything.
+    probabilities = np.array([[0.90, 0.10]] + [[0.10, 0.90]] * 7 + [[0.45, 0.55], [0.55, 0.45]])
+    y_true = ["A"] + ["B"] * 9
+
+    def abstain_rate(threshold):
+        preds = [classes[i] if row.max() >= threshold else None for i, row in zip(probabilities.argmax(axis=1), probabilities)]
+        return M.report(y_true, preds, classes)["abstain_rate"]
+
+    unconstrained, unconstrained_score = M.best_threshold(probabilities, y_true, classes)
+    assert unconstrained_score == pytest.approx(15 / 16)
+    assert abstain_rate(unconstrained) == pytest.approx(0.2)
+
+    capped, capped_score = M.best_threshold(probabilities, y_true, classes, max_abstain=0.10)
+    assert capped != unconstrained
+    assert abstain_rate(capped) <= 0.10
+    assert capped_score == pytest.approx(41 / 51)
+
+    with pytest.raises(ValueError, match="max_abstain"):
+        M.best_threshold(probabilities, y_true, classes, grid=np.arange(0.95, 1.0, 0.01), max_abstain=0.5)
+
+
+def test_max_abstain_spends_the_cap_when_the_best_score_abstains_nothing():
+    classes = ("A", "B")
+    # Nine confident correct calls plus one correct call at 0.55, so the best
+    # macro F1 is 1.0 with nothing abstained and only the cap makes it abstain.
+    probabilities = np.array([[0.90, 0.10]] * 5 + [[0.10, 0.90]] * 4 + [[0.45, 0.55]])
+    y_true = ["A"] * 5 + ["B"] * 5
+
+    unconstrained, score = M.best_threshold(probabilities, y_true, classes)
+    assert unconstrained == 0.0
+    assert score == pytest.approx(1.0)
+
+    capped, capped_score = M.best_threshold(probabilities, y_true, classes, max_abstain=0.10)
+    assert capped == pytest.approx(0.60)
+    assert capped_score == pytest.approx(17 / 18)
+    preds = [classes[i] if row.max() >= capped else None for i, row in zip(probabilities.argmax(axis=1), probabilities)]
+    assert M.report(y_true, preds, classes)["abstain_rate"] == pytest.approx(0.10)
