@@ -8,10 +8,6 @@ of megabytes while training.
 The classifier sees eight evenly spaced frames from the window rather than all
 25 frames per second: with 22 source clips the risk is overfitting, not temporal
 resolution, and the even spacing still shows a change of posture or position.
-
-``motion`` appends the absolute difference between consecutive sampled frames, so
-the classifier also sees what changed. The activity label is made of movement, and
-a still animal and a slowly walking one look the same in eight photographs.
 """
 
 from __future__ import annotations
@@ -31,11 +27,8 @@ MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 
-def window_frames(cap, fps: float, start: float, end: float, samples: int = SAMPLES, wh=WH, box=None, motion: bool = False) -> np.ndarray:
+def window_frames(cap, fps: float, start: float, end: float, samples: int = SAMPLES, wh=WH, box=None) -> np.ndarray:
     """``samples`` evenly spaced frames of [start, end) as (samples, h, w, 3) uint8.
-
-    With ``motion`` the result is (2 * samples, h, w, 3): the same frames followed
-    by their absolute differences, the first difference zero.
 
     ``cap`` is an open ``cv2.VideoCapture`` positioned at or before ``start``.
     A frame that fails to decode repeats the previous one, so a short or damaged
@@ -75,14 +68,10 @@ def window_frames(cap, fps: float, start: float, end: float, samples: int = SAMP
         for _ in range(step - 1):
             if not cap.grab():
                 break
-    frames = np.stack(frames)
-    if not motion:
-        return frames
-    differences = [np.zeros_like(frames[0])] + [cv2.absdiff(frames[t], frames[t - 1]) for t in range(1, len(frames))]
-    return np.concatenate([frames, np.stack(differences)])
+    return np.stack(frames)
 
 
-def clip_windows(path, spans, samples: int = SAMPLES, wh=WH, boxes=None, motion: bool = False) -> list[np.ndarray]:
+def clip_windows(path, spans, samples: int = SAMPLES, wh=WH, boxes=None) -> list[np.ndarray]:
     """Frames for every (start, end) span of one clip, in the order given."""
     import cv2
 
@@ -93,7 +82,7 @@ def clip_windows(path, spans, samples: int = SAMPLES, wh=WH, boxes=None, motion:
     boxes = boxes or [None] * len(spans)
     try:
         return [
-            window_frames(cap, fps, start, end, samples, wh, box, motion)
+            window_frames(cap, fps, start, end, samples, wh, box)
             for (start, end), box in zip(spans, boxes)
         ]
     finally:
@@ -109,23 +98,22 @@ def to_tensor(batch: np.ndarray):
     return torch.from_numpy(np.ascontiguousarray(array.transpose(0, 1, 4, 2, 3)))
 
 
-def decode_windows(windows, clips_root, relative, samples: int = SAMPLES, wh=WH, boxes=None, motion: bool = False) -> np.ndarray:
+def decode_windows(windows, clips_root, relative, samples: int = SAMPLES, wh=WH, boxes=None) -> np.ndarray:
     """Frames for every window, in the order given, one decode pass per clip.
 
     ``relative`` maps a clip id to its path under ``clips_root`` (the ledger's
     ``relative_path`` column), so a caller never rebuilds that layout by hand.
     ``boxes`` is an optional list, one (x1, y1, x2, y2) in full-frame pixels per
-    window, or None to keep the whole frame. ``motion`` doubles the time axis with
-    the consecutive-frame differences.
+    window, or None to keep the whole frame.
     """
     by_clip: dict[str, list[int]] = {}
     for i, win in enumerate(windows):
         by_clip.setdefault(win.clip_id, []).append(i)
 
-    decoded = np.zeros((len(windows), samples * 2 if motion else samples, wh[1], wh[0], 3), dtype=np.uint8)
+    decoded = np.zeros((len(windows), samples, wh[1], wh[0], 3), dtype=np.uint8)
     for clip_id, indices in by_clip.items():
         spans = [(windows[i].start, windows[i].end) for i in indices]
         clip_boxes = None if boxes is None else [boxes[i] for i in indices]
-        for i, window in zip(indices, clip_windows(clips_root / relative[clip_id], spans, samples, wh, clip_boxes, motion)):
+        for i, window in zip(indices, clip_windows(clips_root / relative[clip_id], spans, samples, wh, clip_boxes)):
             decoded[i] = window
     return decoded
