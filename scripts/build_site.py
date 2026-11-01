@@ -232,7 +232,7 @@ def model_segments(clip: dict) -> str:
         f'<span>{row["label"]}</span></button>' for row in clip["windows"])
 
 
-def page(clips: list[dict], evaluation: dict, numbers: dict, commit: str) -> str:
+def page(clips: list[dict], evaluation: dict, numbers: dict) -> str:
     test = evaluation["test"]
     classes = test["classes"]
     clip_json = json.dumps(clips, separators=(",", ":"))
@@ -470,7 +470,7 @@ python3 scripts/build_site.py</pre>
   <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/ACTIVITY-REPORT.md">Activity report</a></p>
 </section>
 
-<footer>Built {date.today().isoformat()} from commit {commit} by <code>scripts/build_site.py</code>.
+<footer>Built {date.today().isoformat()} by <code>scripts/build_site.py</code>.
 Numbers come from <code>outputs/evaluation.json</code> and the pipeline reports.</footer>
 </div>
 <script>
@@ -567,9 +567,7 @@ def main() -> int:
     for name in ("activity-timeline.png", "activity-by-hour.png"):
         shutil.copy(ROOT / "docs/figures" / name, args.out / "media" / name)
 
-    commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
-                            capture_output=True, text=True).stdout.strip() or "unknown"
-    (args.out / "index.html").write_text(page(infos, evaluation, reported_numbers(), commit))
+    (args.out / "index.html").write_text(page(infos, evaluation, reported_numbers()))
     print(f"wrote {args.out}/index.html and {len(infos)} clips")
     return 0
 
