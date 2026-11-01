@@ -17,6 +17,12 @@ NON_CLASS_LABELS = ("Transition", "Uncertain")
 
 ALL_LABELS = MODEL_CLASSES + ("Climbing",) + NON_CLASS_LABELS
 
+# The activity axis that scripts/activity.py measures on footage with no
+# annotation. It is not a behavior label: Active and Inactive say whether the
+# animal was in view and moving, not what it was doing, so they never enter
+# data/annotations.csv and never appear beside Eating, Locomotion or Resting.
+ACTIVITY_CLASSES = ("Active", "Inactive")
+
 # One window is five seconds by design; prelabel.py, the window builder and the
 # demo all share these, so the pre-labels and the demo cover the same grid.
 WINDOW_S = 5.0

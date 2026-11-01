@@ -28,6 +28,7 @@ from pathlib import Path
 
 import torch
 
+import activity
 import frames
 import metrics
 import model as M
@@ -43,6 +44,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, default=None)
     parser.add_argument("--json", type=Path, default=None)
     parser.add_argument("--validation-only", action="store_true", help="choose the threshold on validation, never decode or score the test split")
+    parser.add_argument("--boxes", type=Path, default=None, help="activity frames.csv; crop each window to the animal's box")
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
 
@@ -66,8 +68,13 @@ def main() -> int:
     if not test_windows and not args.validation_only:
         parser.error(f"need test windows; have {len(test_windows)}")
 
+    boxes = activity.crop_boxes(all_windows, args.boxes) if args.boxes else None
+    val_boxes = None if boxes is None else [boxes[i] for i, w in enumerate(all_windows) if w.split == "validation"]
+    test_boxes = None if boxes is None else [boxes[i] for i, w in enumerate(all_windows) if w.split == "test"]
     val_labels = [w.behavior for w in val_windows]
-    val_probabilities = M.probabilities(model, frames.decode_windows(val_windows, args.clips_root, relative), range(len(val_windows)), device)
+    val_probabilities = M.probabilities(
+        model, frames.decode_windows(val_windows, args.clips_root, relative, boxes=val_boxes), range(len(val_windows)), device
+    )
 
     threshold, val_score = metrics.best_threshold(val_probabilities, val_labels, classes)
     val_preds = [classes[i] if val_probabilities[j].max() >= threshold else None for j, i in enumerate(val_probabilities.argmax(axis=1))]
@@ -103,7 +110,9 @@ def main() -> int:
         return 0
 
     test_labels = [w.behavior for w in test_windows]
-    test_probabilities = M.probabilities(model, frames.decode_windows(test_windows, args.clips_root, relative), range(len(test_windows)), device)
+    test_probabilities = M.probabilities(
+        model, frames.decode_windows(test_windows, args.clips_root, relative, boxes=test_boxes), range(len(test_windows)), device
+    )
     test_preds = [classes[i] if test_probabilities[j].max() >= threshold else None for j, i in enumerate(test_probabilities.argmax(axis=1))]
     test = metrics.report(test_labels, test_preds, classes)
 
