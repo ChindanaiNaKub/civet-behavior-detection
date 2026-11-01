@@ -6,8 +6,9 @@ needs no server and no model at presentation time, so it can be hosted as static
 files and opened by anyone.
 
 Everything with a number on the page is read from the pipeline's own output:
-`outputs/evaluation.json` for Task 1, `outputs/features/features.md` for Task 3
-and the README sentences for Task 2. The build fails rather than inventing one.
+`outputs/evaluation.json` for Task 1, `outputs/features/features.md` for Task 3,
+the README sentences for Task 2 and the banded civet activity summary, and the
+activity figures from `docs/figures/`. The build fails rather than inventing one.
 
 Usage:
     python3 scripts/build_site.py
@@ -196,6 +197,11 @@ def reported_numbers() -> dict:
         "heldout_hit": (readme, r"finds the animal in (\d+) percent of held-out frames"),
         "feature_windows": (features_md, r"Windows: train \d+, validation \d+, test (\d+)"),
         "feature_missing": (features_md, r"no silhouette at all: train \d+, validation \d+, test (\d+)"),
+        "activity_hours": (readme, r"([\d.]+)\s+hours of banded civet"),
+        "activity_present": (readme, r"in view ([\d.]+) percent of the recorded night"),
+        "activity_active": (readme, r"moving ([\d.]+) percent of\s+it"),
+        "activity_f1": (readme, r"macro F1 ([\d.]+) on the camera it never saw"),
+        "activity_majority": (readme, r"against ([\d.]+) for\s+always answering Active"),
     }
     found = {}
     for key, (text, pattern) in patterns.items():
@@ -226,7 +232,7 @@ def model_segments(clip: dict) -> str:
         f'<span>{row["label"]}</span></button>' for row in clip["windows"])
 
 
-def page(clips: list[dict], evaluation: dict, numbers: dict, commit: str) -> str:
+def page(clips: list[dict], evaluation: dict, numbers: dict) -> str:
     test = evaluation["test"]
     classes = test["classes"]
     clip_json = json.dumps(clips, separators=(",", ":"))
@@ -311,6 +317,10 @@ def page(clips: list[dict], evaluation: dict, numbers: dict, commit: str) -> str
   .big span {{ font:12px/1.4 "Helvetica Neue", sans-serif; color:var(--muted); }}
   .note {{ background:var(--panel); padding:16px 18px; font-size:14px; color:var(--muted);
     font-family:"Helvetica Neue", sans-serif; }}
+  figure {{ margin:20px 0 6px; }}
+  figure img {{ width:100%; display:block; border:1px solid var(--rule); }}
+  figcaption {{ margin-top:8px; font:12.5px/1.5 "Helvetica Neue", sans-serif; color:var(--muted); max-width:74ch; }}
+  .figgrid {{ display:grid; gap:22px; }}
   code {{ font:13px/1.4 ui-monospace, "SF Mono", Menlo, monospace; background:var(--panel);
     padding:2px 5px; }}
   pre {{ background:var(--panel); padding:14px 16px; overflow:auto; font-size:13px; }}
@@ -324,8 +334,10 @@ def page(clips: list[dict], evaluation: dict, numbers: dict, commit: str) -> str
   <div class="kicker">CMZ / Phase 2 / held-out demo</div>
   <h1>Civet behavior detection</h1>
   <p class="lead">Three tasks on five-second windows of camera-trap footage: behavior
-  classification, YOLO detection of the animal, and silhouette features. The clips below
-  are precomputed from committed model outputs, so this page runs on any machine with a browser.</p>
+  classification, YOLO detection of the animal, and silhouette features. A separate section
+  measures presence and movement on {numbers['activity_hours']} hours of banded civet footage with no annotation.
+  The clips below are precomputed from committed model outputs, so this page runs on any
+  machine with a browser.</p>
 </header>
 
 <section>
@@ -396,7 +408,37 @@ def page(clips: list[dict], evaluation: dict, numbers: dict, commit: str) -> str
 </section>
 
 <section>
-  <h2><span class="num">05</span>What this does not prove</h2>
+  <h2><span class="num">05</span>Banded civet activity, with no annotation</h2>
+  <p>{numbers['activity_hours']} hours from four fixed cameras on the night of 2026-04-05, and not one
+  human label. The Phase 2 behavior classes cannot be scored on it, so this scan measures what a fixed
+  camera can see by itself: is the animal in view, and is it moving. The same classifier is then trained
+  on that measurement. These numbers are not comparable with the three-class result above.</p>
+  <div class="big">
+    <div><b>{numbers['activity_hours']}</b><span>hours, one night, four cameras</span></div>
+    <div><b>{numbers['activity_present']}%</b><span>of the night in view</span></div>
+    <div><b>{numbers['activity_active']}%</b><span>of the night moving</span></div>
+    <div><b>{numbers['activity_f1']}</b><span>macro F1 on camera 4, held out</span></div>
+  </div>
+  <div class="figgrid">
+    <figure>
+      <img src="media/activity-timeline.png" alt="One night on four fixed cameras. Teal is the animal moving, amber is present and still, grey is absent.">
+      <figcaption>Each row is one camera on the same clock. The empty room is the per-pixel median of the
+      whole clip, so a box survives only when the next second corroborates it.</figcaption>
+    </figure>
+    <figure>
+      <img src="media/activity-by-hour.png" alt="Active minutes per clock hour, four cameras, peaking between 23:00 and 02:00.">
+      <figcaption>Active minutes per clock hour. Activity clusters between 23:00 and 02:00, with a
+      second cluster near 21:00.</figcaption>
+    </figure>
+  </div>
+  <p>Always answering Active would score {numbers['activity_majority']}, so the model carries 0.21 macro F1
+  on a viewpoint it never saw. The visual audit read 24 windows of each state at full resolution: 24 Active,
+  23 Inactive and 22 Absent held what the label said.
+  <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/ACTIVITY-REPORT.md">Activity report</a></p>
+</section>
+
+<section>
+  <h2><span class="num">06</span>What this does not prove</h2>
   <div class="note">
     <p>The test split holds {test['n']} windows, so a single window moves macro F1 by several
     points. The validation split is perfectly separated, which says the split is easy, not that
@@ -406,22 +448,29 @@ def page(clips: list[dict], evaluation: dict, numbers: dict, commit: str) -> str
     <p>Task 3's features are not keypoints. Body angle and head angle are two axes of one blob,
     and {numbers['feature_missing']} of the {numbers['feature_windows']} test windows have no
     silhouette at all, so their rows are the training median rather than measured geometry.</p>
+    <p>The banded civet score is measured against the labels the scan produced, on one night from four
+    cameras. It is a check that the classifier learned that measurement, not accuracy against a person,
+    and it says nothing about a second night.</p>
   </div>
 </section>
 
 <section>
-  <h2><span class="num">05</span>Reproduce</h2>
+  <h2><span class="num">07</span>Reproduce</h2>
   <pre>python3 -m pip install -r requirements.txt
 python3 scripts/evaluate.py
 python3 scripts/demo_all.py data/raw/Eating/25690519193547292.mp4
+python3 scripts/activity.py --clips &lt;folder&gt; --out outputs/activity
+python3 scripts/activity_report.py
 python3 scripts/build_site.py</pre>
-  <p><a href="CMZ-Phase-2-Presentation.pdf">Phase 2 deck (PDF)</a> ·
+  <p><a href="https://chindanainakub.github.io/civet-behavior-detection/presentation/CMZ-Phase-2-Deck.pdf">Deck (PDF, 28 slides)</a> ·
+  <a href="https://chindanainakub.github.io/civet-behavior-detection/presentation/">Deck (reveal.js)</a> ·
   <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection">Repository</a> ·
   <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/EVALUATION-REPORT.md">Evaluation report</a> ·
-  <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/TASKS-2-AND-3.md">Tasks 2 and 3</a></p>
+  <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/TASKS-2-AND-3.md">Tasks 2 and 3</a> ·
+  <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/ACTIVITY-REPORT.md">Activity report</a></p>
 </section>
 
-<footer>Built {date.today().isoformat()} from commit {commit} by <code>scripts/build_site.py</code>.
+<footer>Built {date.today().isoformat()} by <code>scripts/build_site.py</code>.
 Numbers come from <code>outputs/evaluation.json</code> and the pipeline reports.</footer>
 </div>
 <script>
@@ -506,7 +555,6 @@ def main() -> int:
     detector = YOLO(str(args.detector))
 
     args.out.mkdir(parents=True, exist_ok=True)
-    shutil.copy(ROOT / "docs/CMZ-Phase-2-Presentation.pdf", args.out / "CMZ-Phase-2-Presentation.pdf")
 
     infos = []
     for path in clips:
@@ -516,9 +564,10 @@ def main() -> int:
         render(info, args.out / "media" / f"{info['id']}.mp4")
         infos.append(info)
 
-    commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
-                            capture_output=True, text=True).stdout.strip() or "unknown"
-    (args.out / "index.html").write_text(page(infos, evaluation, reported_numbers(), commit))
+    for name in ("activity-timeline.png", "activity-by-hour.png"):
+        shutil.copy(ROOT / "docs/figures" / name, args.out / "media" / name)
+
+    (args.out / "index.html").write_text(page(infos, evaluation, reported_numbers()))
     print(f"wrote {args.out}/index.html and {len(infos)} clips")
     return 0
 
