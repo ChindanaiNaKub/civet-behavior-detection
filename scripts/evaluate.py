@@ -58,6 +58,9 @@ def main() -> int:
     device = torch.device(args.device if args.device != "cuda" or torch.cuda.is_available() else "cpu")
     model, config = M.load(args.model, str(device))
     classes = config["classes"]
+    # The checkpoint records whether it saw difference frames, so evaluation
+    # cannot decode a different input from the one the weights were trained on.
+    motion = bool(config.get("motion", False))
 
     all_windows = W.read_windows(args.windows)
     relative = W.read_relative_paths(args.source_clips)
@@ -73,7 +76,7 @@ def main() -> int:
     test_boxes = None if boxes is None else [boxes[i] for i, w in enumerate(all_windows) if w.split == "test"]
     val_labels = [w.behavior for w in val_windows]
     val_probabilities = M.probabilities(
-        model, frames.decode_windows(val_windows, args.clips_root, relative, boxes=val_boxes), range(len(val_windows)), device
+        model, frames.decode_windows(val_windows, args.clips_root, relative, boxes=val_boxes, motion=motion), range(len(val_windows)), device
     )
 
     threshold, val_score = metrics.best_threshold(val_probabilities, val_labels, classes)
@@ -111,7 +114,7 @@ def main() -> int:
 
     test_labels = [w.behavior for w in test_windows]
     test_probabilities = M.probabilities(
-        model, frames.decode_windows(test_windows, args.clips_root, relative, boxes=test_boxes), range(len(test_windows)), device
+        model, frames.decode_windows(test_windows, args.clips_root, relative, boxes=test_boxes, motion=motion), range(len(test_windows)), device
     )
     test_preds = [classes[i] if test_probabilities[j].max() >= threshold else None for j, i in enumerate(test_probabilities.argmax(axis=1))]
     test = metrics.report(test_labels, test_preds, classes)

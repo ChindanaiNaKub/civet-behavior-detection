@@ -39,7 +39,7 @@ def test_validation_only_decodes_only_validation_windows(monkeypatch, tmp_path):
             {"classes": ["Eating", "Locomotion", "Resting"], "best_epoch": 1, "val_macro_f1": 1.0, "train_windows": 1},
         ),
     )
-    monkeypatch.setattr(evaluate.frames, "decode_windows", lambda windows, clips_root, relative, boxes=None: decoded.extend(windows) or [[0]])
+    monkeypatch.setattr(evaluate.frames, "decode_windows", lambda windows, clips_root, relative, boxes=None, motion=False: decoded.extend(windows) or [[0]])
     monkeypatch.setattr(evaluate.M, "probabilities", lambda model, frames, indices, device: np.array([[0.9, 0.05, 0.05]]))
     monkeypatch.setattr(
         sys,
@@ -92,7 +92,7 @@ def test_held_out_payload_keeps_every_test_window_traceable(monkeypatch, tmp_pat
             {"classes": ["Eating", "Locomotion", "Resting"], "best_epoch": 1, "val_macro_f1": 1.0, "train_windows": 1},
         ),
     )
-    monkeypatch.setattr(evaluate.frames, "decode_windows", lambda windows, clips_root, relative, boxes=None: [[0]] * len(windows))
+    monkeypatch.setattr(evaluate.frames, "decode_windows", lambda windows, clips_root, relative, boxes=None, motion=False: [[0]] * len(windows))
 
     def probabilities(model, decoded, indices, device):
         calls.append(len(list(indices)))
