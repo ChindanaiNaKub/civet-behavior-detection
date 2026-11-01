@@ -10,6 +10,17 @@ The model classes are Eating, Locomotion and Resting. The brief calls the third 
 
 Tasks 2 and 3 were added to the scope on 2026-10-26, when the professor confirmed all three tasks are required ([ADR 0009](docs/adr/0009-build-tasks-2-and-3-on-auto-labels.md)). Neither task has a human-drawn label: Task 2 trains a YOLO detector on boxes the classical background model proposes, checked by a visual audit of 116 boxes, and Task 3 replaces keypoints with silhouette geometry. The detector reaches mAP50 0.537 on validation but only finds the animal in 59 percent of held-out frames, and the feature classifier reaches macro F1 0.422 on the locked test windows. Both numbers and what they do not prove are in [Tasks 2 and 3](docs/TASKS-2-AND-3.md).
 
+The second submission adds a second species and a second kind of footage: 25.59
+hours of banded civet (`ชะมดแผงสันหางดำ`) recorded by four fixed cameras on the
+night of 2026-04-05, with no annotation. The Phase 2 label source does not apply
+to it, so `scripts/activity.py` measures what a fixed camera can measure by
+itself — whether the animal is in view and whether it is moving — and labels each
+five-second window Active, Inactive or Absent. The table, the two figures, the
+trained model and its held-out score are in [Banded civet activity](docs/ACTIVITY-REPORT.md).
+The animal was in view 9.4 percent of the recorded night and moving 7.6 percent of
+it; the model reaches macro F1 0.664 on the camera it never saw, against 0.453 for
+always answering Active.
+
 ## Start here
 
 - [Live demo site](https://chindanainakub.github.io/civet-behavior-detection/) — plays three precomputed validation clips with the prediction timeline and the reported numbers, on any machine with a browser
@@ -18,6 +29,7 @@ Tasks 2 and 3 were added to the scope on 2026-10-26, when the professor confirme
 - [Baseline training and clip demo](docs/BASELINE-DEMO.md)
 - [Held-out evaluation report](docs/EVALUATION-REPORT.md)
 - [Tasks 2 and 3: detection and silhouette features](docs/TASKS-2-AND-3.md)
+- [Banded civet activity: the active and inactive table, four cameras](docs/ACTIVITY-REPORT.md)
 - [Phase 2 presentation](docs/CMZ-Phase-2-Presentation.pptx) ([PDF](docs/CMZ-Phase-2-Presentation.pdf)) and the [reveal.js deck](presentation/index.html) ([PDF](presentation/CMZ-Phase-2-Deck.pdf))
 - [The four Task 3 features](docs/FEATURES.md)
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
@@ -34,6 +46,7 @@ Tasks 2 and 3 were added to the scope on 2026-10-26, when the professor confirme
 - [Decision: drop Climbing from Phase 2 scope](docs/adr/0007-drop-climbing-from-phase-2-scope.md)
 - [Decision: re-split on verified windows, gold set is the test split](docs/adr/0008-resplit-on-verified-windows-gold-is-test.md)
 - [Decision: build Tasks 2 and 3 on auto-generated labels](docs/adr/0009-build-tasks-2-and-3-on-auto-labels.md)
+- [Decision: measure activity without annotation](docs/adr/0010-measure-activity-without-annotation.md)
 - [Behavior dataset ledger and templates](data/README.md)
 - [Phase 2 plan issue #1](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/1)
 - [Phase 2 spec issue #2](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/2)

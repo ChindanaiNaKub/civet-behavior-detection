@@ -105,10 +105,10 @@ is a run of consecutive Active windows, and one window is five seconds.
 | camera4 | 6.56 | 8.1% | 6.7% | 1.4% | 91.9% | 0.0% | 222 | 5 | 40 |
 | **All** | **25.59** | | **7.6%** | | | | **924** | | |
 
-The animal was in view 8.9 percent of the recorded night and moving for 7.6
-percent of it. Nearly all of the activity is in bouts of one or two windows: the
-median bout is five seconds, and the longest is forty. That is a civet crossing a
-camera's view rather than settling in it.
+The animal was in view for 2.4 of the 25.59 recorded hours, 9.4 percent of the
+night, and moving for 1.94 of them, 7.6 percent. Nearly all of the activity is in
+bouts of one or two windows: the median bout is five seconds and the longest is
+forty. That is a civet crossing a camera's view rather than settling in it.
 
 Camera 3 sees the most of it, which is expected: it is the fisheye that covers the
 whole floor, while the other three each watch one corner.
@@ -142,15 +142,45 @@ camera 4 is held out: a whole viewpoint the model never trained on.
 | Validation | camera3 | 829 | 636 | 193 |
 | Test | camera4 | 383 | 317 | 66 |
 
-TBD-MODEL-RESULTS
+The threshold is chosen on camera 3 and applied to camera 4 once. It came out
+0.00, so nothing abstained and every window is decided.
+
+| Camera 4 (held out) | Support | Predicted | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|---:|
+| Active | 317 | 265 | 0.921 | 0.770 | 0.838 |
+| Inactive | 66 | 118 | 0.381 | 0.682 | 0.489 |
+
+**Macro F1 0.664** over the two classes, with accuracy 0.755 over decided
+windows. Predicting Active every time would score macro F1 0.453, so the model
+carries 0.21 of macro F1 over the majority class on a viewpoint it never saw.
+
+| true \ pred | Active | Inactive | abstain |
+|---|---:|---:|---:|
+| Active | 244 | 73 | 0 |
+| Inactive | 21 | 45 | 0 |
+
+The error is not symmetric. Active recall is 0.770, so the model misses about one
+moving window in four and calls it still. Inactive precision is 0.381, so most of
+what it calls Inactive was moving: 73 of 118 Inactive predictions are wrong. The
+model is conservative about calling an animal still, which is the safer direction
+for a table that is read as "the animal was not moving".
+
+Validation on camera 3 is higher, at macro F1 0.804, and the gap is what a held-out
+viewpoint costs. Camera 3 is the fisheye that sees the whole floor, camera 4 sees
+one corner, and the model had never seen either.
+
+The training set is 75 Inactive windows against 440 Active, so Inactive is the
+minority class by six to one. The inverse-frequency loss weight is what keeps the
+model from ignoring it, and the low Inactive precision is what that costs.
 
 ### The visual audit
 
 A measurement is only as good as what it looked at, so 24 windows of each state
 were sampled evenly across the four cameras, decoded at full resolution, cropped
-around the box the scan found, and read by eye. The sheets are
-`outputs/activity/audit-active.png`, `audit-inactive.png` and `audit-absent.png`,
-made by `scripts/audit_activity.py`.
+around the box the scan found, and read by eye. `scripts/audit_activity.py` makes
+the sheets, and they are committed as
+[Active](figures/audit-active.jpg), [Inactive](figures/audit-inactive.jpg) and
+[Absent](figures/audit-absent.jpg).
 
 | State | Windows read | Held the animal | Notes |
 |---|---:|---:|---|
@@ -158,7 +188,16 @@ made by `scripts/audit_activity.py`.
 | Inactive | 24 | 23 | one box on a shadow beside the plank in camera 3 |
 | Absent | 24 | 2 | one passing animal that held fewer than three of five samples, one in camera 3's dusk segment |
 
-TBD-AUDIT-NOTE
+The two Absent windows that held an animal are the honest misses. One is a civet
+crossing camera 4 in about four seconds, which holds fewer than three of the five
+samples and is therefore labelled Absent by the window rule; the other is in
+camera 3's dusk segment, where the frame is counted as unmeasured and the window
+falls out as Absent. Both are boundary cases of the rule rather than silent
+failures, and both are visible on the sheet.
+
+The single Inactive false positive is a shadow beside the plank that the
+background model sees as a still silhouette. It is the failure the audit exists to
+count.
 
 ## Limits
 
