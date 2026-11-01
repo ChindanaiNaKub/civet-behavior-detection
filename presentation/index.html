@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Three tasks, one animal, one pipeline · CMZ Phase 2</title>
-<meta name="description" content="Civet behavior detection: short-clip classification, YOLO detection and silhouette features.">
+<meta name="description" content="Civet behavior detection: short-clip classification, YOLO detection, silhouette features, and an activity table for a night of banded civet footage.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23284236'/%3E%3Ccircle cx='50' cy='50' r='21' fill='%23BC4527'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/reveal/reveal.css">
 <link rel="stylesheet" href="deck.css">
@@ -19,7 +19,7 @@
     <div class="cover-body">
       <div class="kicker">CMZ · Phase 2 · October 2026</div>
       <h1>Three tasks,<br>one animal,<br><em>one pipeline.</em></h1>
-      <p class="lede">Short-clip behavior classification, detection and silhouette features for a zoo civet.</p>
+      <p class="lede">Short-clip behavior classification, detection and silhouette features for a zoo civet, plus an activity table for a night of banded civet.</p>
       <div class="cover-meta">
         <span>Project team, CMU</span>
         <span>Camera 02 · 19 May 2026</span>
@@ -132,7 +132,7 @@
         <div class="head-meta">CMZ / Phase 2</div>
       </div>
       <div class="body">
-        <h2 class="title tight">Our whole dataset is 17.5 minutes.</h2>
+        <h2 class="title tight">Our behavior dataset is 17.5 minutes.</h2>
         <p class="sub">A four-camera installation produces 96 hours a day. Hand review does not scale past a demonstration.</p>
         <div class="stats stat-strip" style="margin-top:28px">
           <div class="stat"><b>22</b><span>source clips</span></div>
@@ -770,7 +770,107 @@ full-frame and crop labels agree on <span class="warn">4/10</span> windows</pre>
   </aside>
 </section>
 
-<!-- 23 · boundaries -->
+<!-- 23 · divider banded civet -->
+<section class="slide divider is-dark">
+  <div class="numeral-clip"><span class="numeral">06</span></div>
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">Second submission · Banded civet</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2>Another species.<br>Another night.<br>No annotation.</h2>
+      <p class="note">What a fixed camera measures by itself</p>
+    </div>
+    <div class="foot"><span>Banded civet</span></div>
+  </div>
+  <aside class="notes">
+    This is the second submission, and it is a different problem from the three tasks. Another species, one night, four cameras, and no person labelled any of it. So nothing here says when the animal was eating. Timing: 20 seconds.
+  </aside>
+</section>
+
+<!-- 24 · the night -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">06 / Banded civet · The measurement</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight">25.59 hours, and not one label.</h2>
+      <p class="sub">Four fixed cameras watched one enclosure on the night of 2026-04-05. The scan measures what the camera can see by itself, which is presence and movement.</p>
+      <img src="assets/img/activity-timeline.png" alt="One night on four fixed cameras. Teal is the animal moving, amber is present and still, grey is absent." style="width:100%;display:block;margin-top:20px">
+      <div class="note-box" style="margin-top:18px">Each row is one camera on the same clock. The empty room is the per-pixel median of the whole clip, so a box survives only when the next second corroborates it and an insect appears once while a civet persists.</div>
+    </div>
+    <div class="foot"><span>Banded civet</span></div>
+  </div>
+  <aside class="notes">
+    Point at the rows, not the model. The animal was in view 9.4 percent of the night and moving 7.6 percent of it, mostly between 23:00 and 02:00. The median background is the trick: a long recording contains its own empty room. Timing: 55 seconds.
+  </aside>
+</section>
+
+<!-- 25 · the table and its score -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div class="kicker">06 / Banded civet · Output and evaluation</div>
+      <div class="head-rule"></div>
+      <div class="head-meta">CMZ / Phase 2</div>
+    </div>
+    <div class="body">
+      <h2 class="title tight" style="margin-bottom:14px">The table, scored on a camera it never saw.</h2>
+      <div class="matrix-wrap">
+        <div>
+          <h3 class="mini">Active and inactive table · share of each camera's recorded time</h3>
+          <table class="data">
+            <thead>
+              <tr><th>Camera</th><th class="num">Present</th><th class="num">Active</th><th class="num">Inactive</th><th class="num">Absent</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>camera1 · 4.86 h</td><td class="num">8.7%</td><td class="num">8.4%</td><td class="num">0.4%</td><td class="num">91.3%</td></tr>
+              <tr><td>camera2 · 6.26 h</td><td class="num">4.6%</td><td class="num">3.3%</td><td class="num">1.4%</td><td class="num">95.4%</td></tr>
+              <tr><td>camera3 · 7.90 h</td><td class="num">14.6%</td><td class="num">11.2%</td><td class="num">3.4%</td><td class="num">82.3%</td></tr>
+              <tr><td>camera4 · 6.56 h</td><td class="num">8.1%</td><td class="num">6.7%</td><td class="num">1.4%</td><td class="num">91.9%</td></tr>
+              <tr class="accent"><td>All · 25.59 h</td><td class="num">9.4%</td><td class="num">7.6%</td><td class="num"></td><td class="num"></td></tr>
+            </tbody>
+          </table>
+          <p class="sub" style="font-size:15px;margin-top:14px">924 active bouts, median 5 s and longest 40 s. The animal crosses a view rather than settling in it.</p>
+        </div>
+        <div>
+          <div class="stat" style="padding:0;border:0">
+            <b class="rust" style="font-size:80px">0.664</b>
+            <span style="margin-top:8px">macro F1 · camera 4, held out</span>
+          </div>
+          <div class="stat" style="padding:0;border:0;margin-top:18px">
+            <b style="font-size:44px">0.453</b>
+            <span style="margin-top:6px">always answering Active</span>
+          </div>
+          <div class="rows" style="margin-top:18px">
+            <div class="row" style="grid-template-columns:1fr;padding:9px 0">
+              <p>Active precision <b>0.921</b>, recall <b>0.770</b>.</p>
+            </div>
+            <div class="row" style="grid-template-columns:1fr;padding:9px 0">
+              <p>Inactive precision <b>0.381</b>, recall <b>0.682</b>.</p>
+            </div>
+            <div class="row" style="grid-template-columns:1fr;padding:9px 0">
+              <p>Validation on camera 3: <b>0.804</b>.</p>
+            </div>
+          </div>
+          <div class="note-box" style="margin-top:16px">The audit read 24 windows of each state at full resolution: 24 of 24 Active, 23 of 24 Inactive and 22 of 24 Absent held what the label said.</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Banded civet</span></div>
+  </div>
+  <aside class="notes">
+    The model is the Phase 2 classifier trained on the activity labels instead of the behavior labels. Cameras 1 and 2 train, camera 3 selects the epoch, and camera 4 is a whole viewpoint it never saw. Say the caveat before a question: the model is scored against the measurement it learned, so 0.664 is a distillation check, not accuracy against a person. It is also not comparable with 0.949. Timing: 70 seconds.
+  </aside>
+</section>
+
+<!-- 26 · boundaries -->
+
 <section class="slide">
   <div class="pad">
     <div class="head">
@@ -801,8 +901,12 @@ full-frame and crop labels agree on <span class="warn">4/10</span> windows</pre>
           <span class="n">05</span><h4>One training seed</h4>
           <p>Seed 0 only. No run-to-run spread, so the split between score and seed is unknown.</p>
         </div>
+        <div class="row" style="padding:11px 0">
+          <span class="n">06</span><h4>One night of banded civet</h4>
+          <p>25.59 hours from four cameras, with no human label and no second night. The activity score checks the measurement, not a person.</p>
+        </div>
       </div>
-      <p class="sub" style="margin-top:18px">And no human ground truth for detection: its quality is a counted visual audit, not mAP against truth.</p>
+      <p class="sub" style="margin-top:14px">And no human ground truth for detection: its quality is a counted visual audit, not mAP against truth.</p>
     </div>
     <div class="foot"><span>Boundaries</span></div>
   </div>
@@ -811,7 +915,7 @@ full-frame and crop labels agree on <span class="warn">4/10</span> windows</pre>
   </aside>
 </section>
 
-<!-- 24 · next -->
+<!-- 27 · next -->
 <section class="slide">
   <div class="pad">
     <div class="head">
@@ -847,7 +951,7 @@ full-frame and crop labels agree on <span class="warn">4/10</span> windows</pre>
   </aside>
 </section>
 
-<!-- 25 · close -->
+<!-- 28 · close -->
 <section class="slide">
   <div class="close">
     <div class="kicker">CMZ · Phase 2 · October 2026</div>

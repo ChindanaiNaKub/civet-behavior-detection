@@ -1,6 +1,6 @@
 # CMZ Phase 2 deck
 
-A 25-slide, 16:9 reveal.js deck. It opens offline, with reveal.js and the fonts
+A 28-slide, 16:9 reveal.js deck. It opens offline, with reveal.js and the fonts
 vendored under `vendor/` and `assets/fonts/`. Nothing loads from a CDN, so a room
 without wifi is fine.
 
@@ -42,7 +42,7 @@ settles after the load event; use the browser dialog or drive it with Puppeteer.
 
 ## Edit
 
-- `index.html` holds all 25 slides in order. Each `<section>` is one slide.
+- `index.html` holds all 28 slides in order. Each `<section>` is one slide.
 - `deck.css` holds the palette, type scale, and the layout classes
   (`cover`, `divider`, `split`, `stats`, `rows`, `matrix`, `stepper`, `term`, `lanes`).
 - Speaker notes live in `<aside class="notes">` inside their slide.
@@ -51,8 +51,9 @@ settles after the load event; use the browser dialog or drive it with Puppeteer.
 
 Every number comes from the project reports, not from this folder:
 `docs/EVALUATION-REPORT.md`, `docs/TASKS-2-AND-3.md`, `docs/FEATURES.md`,
-`data/source-clips.csv` and `docs/adr/`.
+`docs/ACTIVITY-REPORT.md`, `data/source-clips.csv` and `docs/adr/`.
 
 Images are frames from the committed footage (`data/raw/`) and figures from
 `docs/figures/`. The loop on slide 5 is clip `547292`, re-encoded to 1280 px wide
-with the burned-in demo bands removed.
+with the burned-in demo bands removed. The activity figure on slide 24 is a copy
+of `docs/figures/activity-timeline.png`.
