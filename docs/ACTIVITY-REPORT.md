@@ -173,6 +173,26 @@ The training set is 75 Inactive windows against 440 Active, so Inactive is the
 minority class by six to one. The inverse-frequency loss weight is what keeps the
 model from ignoring it, and the low Inactive precision is what that costs.
 
+### Motion frames on the same split and budget
+
+The label is made of movement, so the run above was repeated with the absolute
+difference between consecutive sampled frames appended to the eight still frames:
+sixteen frames per window, same split, seed 0 and 40-epoch budget, camera 4 scored
+once.
+
+| Camera 4 (held out) | Frames | Active precision | Active recall | Inactive precision | Inactive recall | Macro F1 |
+|---|---:|---:|---:|---:|---:|---:|
+| Still frames | 8 | 0.921 | 0.770 | 0.381 | 0.682 | 0.664 |
+| Still and difference frames | 16 | 0.921 | 0.738 | 0.357 | 0.697 | 0.646 |
+
+The extra frames did not help. Macro F1 fell by 0.018 and Inactive precision by
+0.024, while Active precision held and Active recall gave up 0.032. On this
+footage and budget the model did not turn the difference frames into a better
+separation, so this is recorded as a negative result and `--motion` stays off by
+default. The run is kept as `outputs/activity/evaluation-motion.md`, and its
+checkpoint records sixteen frames so it cannot be confused with the eight-frame
+run.
+
 ### The visual audit
 
 A measurement is only as good as what it looked at, so 24 windows of each state
@@ -233,6 +253,10 @@ python3 scripts/evaluate.py --windows outputs/activity/windows.csv \
   --report outputs/activity/evaluation.md --json outputs/activity/evaluation.json
 python3 scripts/audit_activity.py --clips <folder> --state Active
 ```
+
+For the motion comparison, add `--motion` to the training command and point
+`--model` at the checkpoint it writes. The checkpoint records the frame count, so
+`evaluate.py` decodes the input the weights were trained on.
 
 The scan decodes the footage once and caches it under `outputs/activity/cache`;
 `--retune` reuses that cache to re-apply thresholds without decoding again.
