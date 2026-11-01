@@ -12,10 +12,6 @@ decoded, so issue #5's demo can run before the test set is locked. It writes
 outputs/validation.md and outputs/threshold.json by default, never the held-out
 report paths.
 
-``--max-abstain`` caps the share of validation windows left undecided and spends
-that cap, for runs that would rather abstain than guess. Without it the threshold
-maximises macro F1, so the behaviour pipeline and its report reproduce unchanged.
-
 Writes the markdown report for docs/EVALUATION-REPORT.md and the JSON that
 scripts/demo.py reads for the chosen threshold.
 
@@ -48,7 +44,6 @@ def main() -> int:
     parser.add_argument("--report", type=Path, default=None)
     parser.add_argument("--json", type=Path, default=None)
     parser.add_argument("--validation-only", action="store_true", help="choose the threshold on validation, never decode or score the test split")
-    parser.add_argument("--max-abstain", type=float, default=None, help="cap on the share of validation windows left undecided; the threshold spends it")
     parser.add_argument("--boxes", type=Path, default=None, help="activity frames.csv; crop each window to the animal's box")
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
@@ -79,13 +74,12 @@ def main() -> int:
     boxes = activity.crop_boxes(all_windows, args.boxes) if args.boxes else None
     val_boxes = None if boxes is None else [boxes[i] for i, w in enumerate(all_windows) if w.split == "validation"]
     test_boxes = None if boxes is None else [boxes[i] for i, w in enumerate(all_windows) if w.split == "test"]
-    cap = "" if args.max_abstain is None else f" under a {args.max_abstain:.0%} abstain cap"
     val_labels = [w.behavior for w in val_windows]
     val_probabilities = M.probabilities(
         model, frames.decode_windows(val_windows, args.clips_root, relative, boxes=val_boxes, motion=motion), range(len(val_windows)), device
     )
 
-    threshold, val_score = metrics.best_threshold(val_probabilities, val_labels, classes, max_abstain=args.max_abstain)
+    threshold, val_score = metrics.best_threshold(val_probabilities, val_labels, classes)
     val_preds = [classes[i] if val_probabilities[j].max() >= threshold else None for j, i in enumerate(val_probabilities.argmax(axis=1))]
     validation = metrics.report(val_labels, val_preds, classes)
 
@@ -95,7 +89,7 @@ def main() -> int:
             "",
             f"Model `{args.model}` trained to epoch {config['best_epoch']} with validation macro F1 {config['val_macro_f1']} "
             f"over {config['train_windows']} training windows.",
-            f"Abstain threshold {threshold:.2f}, chosen{cap} on the {len(val_windows)} validation windows "
+            f"Abstain threshold {threshold:.2f}, chosen on the {len(val_windows)} validation windows "
             f"(validation macro F1 {val_score:.3f} at that threshold, {validation['abstain_rate']:.1%} abstained).",
             "No test window was decoded or scored. This is not a held-out result; run this script without"
             " `--validation-only` after the test set is locked.",
@@ -130,7 +124,7 @@ def main() -> int:
         "",
         f"Model `{args.model}` trained to epoch {config['best_epoch']} with validation macro F1 {config['val_macro_f1']} "
         f"over {config['train_windows']} training windows.",
-        f"Abstain threshold {threshold:.2f}, chosen{cap} on the {len(val_windows)} validation windows "
+        f"Abstain threshold {threshold:.2f}, chosen on the {len(val_windows)} validation windows "
         f"(validation macro F1 {val_score:.3f} at that threshold, {validation['abstain_rate']:.1%} abstained).",
         "The test clips were decoded and scored once, after the threshold was fixed.",
         "",

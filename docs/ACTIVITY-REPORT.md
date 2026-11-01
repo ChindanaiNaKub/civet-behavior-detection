@@ -142,49 +142,32 @@ camera 4 is held out: a whole viewpoint the model never trained on.
 | Validation | camera3 | 829 | 636 | 193 |
 | Test | camera4 | 383 | 317 | 66 |
 
-The threshold is chosen on camera 3 and applied to camera 4 once. It is chosen
-under a cap of 10 percent on the share of validation windows left undecided, and
-the cap is spent: on camera 3 the threshold is 0.60 and leaves 61 of 829 windows
-(7.4 percent) without an answer. Applied to camera 4, it abstains on 29 of 383
-windows (7.6 percent).
+The threshold is chosen on camera 3 and applied to camera 4 once. It came out
+0.00, so nothing abstained and every window is decided.
 
-| Threshold rule | Threshold | Abstained | Accuracy over decided | Active P | Active R | Active F1 | Inactive P | Inactive R | Inactive F1 | Macro F1 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| best macro F1, no cap | 0.00 | 0 (0.0%) | 0.755 | 0.921 | 0.770 | 0.838 | 0.381 | 0.682 | 0.489 | 0.664 |
-| 10% abstain cap | 0.60 | 29 (7.6%) | 0.777 | 0.921 | 0.738 | 0.820 | 0.410 | 0.621 | 0.494 | 0.657 |
+| Camera 4 (held out) | Support | Predicted | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|---:|
+| Active | 317 | 265 | 0.921 | 0.770 | 0.838 |
+| Inactive | 66 | 118 | 0.381 | 0.682 | 0.489 |
 
-Support is unchanged by the threshold: 317 Active and 66 Inactive windows.
-
-Abstaining moves 14 wrong "still" answers out of the table: Inactive predictions
-fall from 118 to 100, and the wrong ones from 73 to 59. It costs 0.007 of macro
-F1 and 0.032 of Active recall, because 10 moving windows that were called Active
-are now undecided. The other 14 abstentions on moving windows were the wrong
-"still" calls the change exists to remove. Accuracy over decided windows rises
-from 0.755 to 0.777. That is the trade this page reports: a slightly lower score
-for fewer false "still" rows.
+**Macro F1 0.664** over the two classes, with accuracy 0.755 over decided
+windows. Predicting Active every time would score macro F1 0.453, so the model
+carries 0.21 of macro F1 over the majority class on a viewpoint it never saw.
 
 | true \ pred | Active | Inactive | abstain |
 |---|---:|---:|---:|
-| Active at 0.00 | 244 | 73 | 0 |
-| Inactive at 0.00 | 21 | 45 | 0 |
-| Active at 0.60 | 234 | 59 | 24 |
-| Inactive at 0.60 | 20 | 41 | 5 |
+| Active | 244 | 73 | 0 |
+| Inactive | 21 | 45 | 0 |
 
-The error is still not symmetric. At 0.60, Inactive precision is 0.410, so 59 of
-the 100 Inactive answers are moving windows, against 73 of 118 at 0.00. Active
-recall gives up the 0.032 because 24 moving windows are left undecided. The model
-is conservative about calling an animal still, which is the safer direction for a
-table read as "the animal was not moving", and abstaining narrows that error at a
-small score cost.
+The error is not symmetric. Active recall is 0.770, so the model misses about one
+moving window in four and calls it still. Inactive precision is 0.381, so most of
+what it calls Inactive was moving: 73 of 118 Inactive predictions are wrong. The
+model is conservative about calling an animal still, which is the safer direction
+for a table that is read as "the animal was not moving".
 
-Predicting Active every time would score macro F1 0.453, so the model carries
-0.21 of macro F1 over the majority class on a viewpoint it never saw at 0.00, and
-0.20 at the capped threshold.
-
-Validation on camera 3 is higher, at macro F1 0.804 with nothing abstained and
-0.779 at the 0.60 threshold. The gap to camera 4 is what a held-out viewpoint
-costs. Camera 3 is the fisheye that sees the whole floor, camera 4 sees one
-corner, and the model had never seen either.
+Validation on camera 3 is higher, at macro F1 0.804, and the gap is what a held-out
+viewpoint costs. Camera 3 is the fisheye that sees the whole floor, camera 4 sees
+one corner, and the model had never seen either.
 
 The training set is 75 Inactive windows against 440 Active, so Inactive is the
 minority class by six to one. The inverse-frequency loss weight is what keeps the
@@ -208,8 +191,7 @@ footage and budget the model did not turn the difference frames into a better
 separation, so this is recorded as a negative result and `--motion` stays off by
 default. The run is kept as `outputs/activity/evaluation-motion.md`, and its
 checkpoint records sixteen frames so it cannot be confused with the eight-frame
-run. Both rows were scored at the unconstrained threshold, 0.00, so the
-comparison isolates the frames.
+run.
 
 ### The visual audit
 
@@ -268,7 +250,6 @@ python3 scripts/train.py --windows outputs/activity/windows.csv \
 python3 scripts/evaluate.py --windows outputs/activity/windows.csv \
   --source-clips outputs/activity/source-clips.csv --clips-root <folder> \
   --boxes outputs/activity/frames.csv --model outputs/activity/model.pt \
-  --max-abstain 0.10 \
   --report outputs/activity/evaluation.md --json outputs/activity/evaluation.json
 python3 scripts/audit_activity.py --clips <folder> --state Active
 ```
