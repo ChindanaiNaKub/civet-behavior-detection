@@ -4,7 +4,7 @@ Phase 2 project for building a checkable short-clip behavior-classification base
 
 ## Current status
 
-The pipeline is built and runs end to end. `data/annotations.csv` covers all 22 clips: the first annotator's verified intervals for the 14 train and validation clips, and the reconciled final intervals for the eight gold clips. The two independent gold passes were compared (Dice 0.597 over the eight clips, in `data/agreement.csv`) and reconciled with `scripts/reconcile.py`. The test set is locked: Gun signed `data/splits.csv` on 2026-10-20 (test windows Eating 7 / Locomotion 2 / Resting 6), and `scripts/split.py` refuses to overwrite a signed ledger. A baseline checkpoint has been trained on the train split and shown on a validation clip with a validation-selected threshold; see [Baseline training and clip demo](docs/BASELINE-DEMO.md). It was scored once on the locked test split on 2026-10-21: test macro F1 0.949 over 15 windows, with no abstentions. See the [held-out evaluation report](docs/EVALUATION-REPORT.md) for the per-class numbers, verified coverage, annotation agreement, the one error and the limits. The Phase 2 goal is a reproducible baseline and timeline demo by **October 31, 2026**.
+The pipeline is built and runs end to end. `data/annotations.csv` covers all 22 clips: the first annotator's verified intervals for the 14 train and validation clips, and the reconciled final intervals for the eight gold clips. The two gold passes, intended to be blind, were compared (Dice 0.597 over the eight clips, in `data/agreement.csv`) and reconciled with `scripts/reconcile.py`; the [evaluation report](docs/EVALUATION-REPORT.md) records why the second pass was not fully independent. The test set is locked: Gun signed `data/splits.csv` on 2026-10-20 (test windows Eating 7 / Locomotion 2 / Resting 6), and `scripts/split.py` refuses to overwrite a signed ledger. A baseline checkpoint has been trained on the train split and shown on a validation clip with a validation-selected threshold; see [Baseline training and clip demo](docs/BASELINE-DEMO.md). It was scored once on the locked test split on 2026-10-21: test macro F1 0.949 over 15 windows, with no abstentions. See the [held-out evaluation report](docs/EVALUATION-REPORT.md) for the per-class numbers, verified coverage, annotation agreement, the one error and the limits. The Phase 2 target was a reproducible baseline and timeline demo by **October 31, 2026**, and it is met.
 
 The model classes are Eating, Locomotion and Resting. The brief calls the third class Walking, and the repository calls it Locomotion because the Phase 1 glossary widened it to any movement that changes location. Climbing is out of scope: no Climbing clip was supplied, the two candidate intervals were reviewed and are not climbing, and the instructor confirmed three classes are enough. It stays a valid annotation label that never becomes a model class, and no Climbing work is planned. See [ADR 0004](docs/adr/0004-train-a-cnn-over-window-frames.md) for the model, [ADR 0005](docs/adr/0005-split-by-clip-not-by-recording-group.md) for the split rule and [ADR 0007](docs/adr/0007-drop-climbing-from-phase-2-scope.md) for Climbing.
 
@@ -23,14 +23,14 @@ always answering Active.
 
 ## Start here
 
-- [Live demo site](https://chindanainakub.github.io/civet-behavior-detection/) — plays three precomputed validation clips with the prediction timeline and the reported numbers, on any machine with a browser
+- [Live demo site](https://chindanainakub.github.io/civet-behavior-detection/) — plays three precomputed validation clips with the prediction timeline, then reports the banded civet activity numbers and figures, on any machine with a browser
 - [คู่มือหน้าตรวจสำหรับ Windows / Fedora Linux](docs/REVIEWER-QUICKSTART.md)
 - [Gold review handoff: second reviewer, reconciliation and test lock](docs/GOLD-REVIEW-HANDOFF.md)
 - [Baseline training and clip demo](docs/BASELINE-DEMO.md)
 - [Held-out evaluation report](docs/EVALUATION-REPORT.md)
 - [Tasks 2 and 3: detection and silhouette features](docs/TASKS-2-AND-3.md)
 - [Banded civet activity: the active and inactive table, four cameras](docs/ACTIVITY-REPORT.md)
-- [Phase 2 presentation](docs/CMZ-Phase-2-Presentation.pptx) ([PDF](docs/CMZ-Phase-2-Presentation.pdf)) and the [reveal.js deck](presentation/index.html) ([PDF](presentation/CMZ-Phase-2-Deck.pdf))
+- [Phase 2 presentation](docs/CMZ-Phase-2-Presentation.pptx) ([PDF](docs/CMZ-Phase-2-Presentation.pdf)), a 10-slide summary of the three tasks, and the [reveal.js deck](presentation/index.html) ([PDF](presentation/CMZ-Phase-2-Deck.pdf)), the 28-slide version with speaker notes, the banded civet section and the demo slide
 - [The four Task 3 features](docs/FEATURES.md)
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
 - [Footage and compute audit](docs/FOOTAGE-AUDIT.md)
@@ -51,7 +51,7 @@ always answering Active.
 - [Phase 2 plan issue #1](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/1)
 - [Phase 2 spec issue #2](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/2)
 
-The pre-labeler for [#9: Auto pre-label behavior timelines (zero-shot)](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/9) is in `scripts/prelabel.py`. Its [smoke test](docs/PRELABEL-SMOKE-TEST.md) found that motion alone pre-labels Resting reliably and Locomotion partly, while the zero-shot model proposes no Eating interval and only false Climbing ones — so those two classes are labeled by hand. That unblocks [#4: Create reviewed behavior-interval dataset](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/4). Follow the ticket links for the remaining dataset, classifier, and evaluation work.
+The pre-labeler for [#9: Auto pre-label behavior timelines (zero-shot)](https://github.com/ChindanaiNaKub/civet-behavior-detection/issues/9) is in `scripts/prelabel.py`. Its [smoke test](docs/PRELABEL-SMOKE-TEST.md) found that motion alone pre-labels Resting reliably and Locomotion partly, while the zero-shot model proposes no Eating interval and only false Climbing ones, so those two classes were labeled by hand.
 
 ## Run the pipeline
 
@@ -119,7 +119,16 @@ python3 scripts/features.py          # four silhouette features plus classifier
 python3 scripts/demo_all.py data/raw/Eating/25690519193422801.mp4
 ```
 
-9. Render the presentation site. This is the page that GitHub Pages publishes: three annotated clips with the verified and predicted bands, the held-out numbers read from `outputs/evaluation.json`, and the Task 2 and Task 3 headlines read from the reports.
+9. Measure activity on footage that has no annotation. The banded civet set is 25.59 hours from four fixed cameras and has no labels, so this scan measures whether the animal is in view and whether it is moving, then trains the same classifier on that measurement. Put the four camera files under one folder; they are not tracked.
+
+```
+python3 scripts/activity.py --clips <folder> --out outputs/activity
+python3 scripts/activity_report.py
+```
+
+The table, the two figures and the held-out score are in [Banded civet activity](docs/ACTIVITY-REPORT.md), which also has the training and evaluation commands.
+
+10. Render the presentation site. This is the page that GitHub Pages publishes: three annotated clips with the verified and predicted bands, the held-out numbers read from `outputs/evaluation.json`, and the Task 2, Task 3 and activity headlines read from the reports.
 
 ```
 python3 scripts/build_site.py
@@ -146,7 +155,7 @@ reconciling and locking the final dataset. If working in the repository instead:
 python3 scripts/review.py --only-file data/gold-clips.txt --blind-file data/gold-clips.txt --out data/annotations-second.csv
 ```
 
-Then compare the two independent passes and fill the reconciliation columns in `data/agreement.csv`.
+Then compare the two passes and fill the reconciliation columns in `data/agreement.csv`.
 
 The comparison requires every gold clip and two distinct, consistent annotator
 identities. It refuses to overwrite existing reconciliation work. File validation
@@ -162,11 +171,11 @@ The model classes are Eating, Locomotion and Resting; Climbing is out of scope (
 
 Behavior intervals are pre-labeled automatically, not hand-labeled from scratch: Resting and Locomotion come from motion, and a zero-shot model proposes Eating and Climbing for human verification. A small human gold set is the only data used for reported model quality. See [decision 0003](docs/adr/0003-automate-prelabeling-with-human-gold-set.md).
 
-The 22 audited clips are tracked in `data/raw/` so collaborators get them on clone. They are stored as delivered and are unverified: folder-level labels only, no verified behavior intervals, no verified Climbing example, and room/camera coverage unknown. See the [footage audit](docs/FOOTAGE-AUDIT.md) for the inventory and compute check, the [annotation guide](docs/ANNOTATION-GUIDE.md) for labeling rules, and the plan for split and evaluation rules.
+The 22 audited clips are tracked in `data/raw/` so collaborators get them on clone. They are stored as delivered, and their folder names are only a rough label: room and camera coverage are unknown and no Climbing interval was verified. The verified intervals, including the gold set, are in `data/annotations.csv`. See the [footage audit](docs/FOOTAGE-AUDIT.md) for the inventory and compute check, the [annotation guide](docs/ANNOTATION-GUIDE.md) for labeling rules, and the plan for split and evaluation rules.
 
 ## Data handling
 
-The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, matching `relative_path` in [`data/source-clips.csv`](data/source-clips.csv). Rationale is recorded in [decision 0002](docs/adr/0002-track-source-clips-in-repository.md). Source archives, other footage formats, and model checkpoints are not stored here; track those in team-approved storage with source, stable identifier, duration, and verified capture metadata. These clips are deliverable to collaborators with read access to this private repository — do not republish them elsewhere without team approval.
+The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, matching `relative_path` in [`data/source-clips.csv`](data/source-clips.csv). Rationale is recorded in [decision 0002](docs/adr/0002-track-source-clips-in-repository.md). Source archives, other footage formats, and model checkpoints are not stored here; track those in team-approved storage with source, stable identifier, duration, and verified capture metadata. The four banded civet files are not tracked either; the activity scan reads them from a local folder. These clips are deliverable to collaborators with read access to this private repository — do not republish them elsewhere without team approval.
 
 ## Repository contents
 
@@ -175,13 +184,13 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 - `scripts/labels.py` — the behavior label domain and the CSV contracts, so a label rule is stated once.
 - `scripts/prelabel.py` — behavior pre-labeler: Resting from sustained low motion, Locomotion from location change, Eating/Climbing proposed by zero-shot X-CLIP; writes a per-interval timeline CSV for review. Logic checks in `scripts/test_prelabel.py`.
 - `scripts/review.py` — local review page: plays each clip with its proposed intervals and writes verified intervals to `data/annotations.csv`. Supports blind clips for the gold set.
-- `scripts/agreement.py` — compares two independent label passes on the shared sample and writes `data/agreement.csv`.
+- `scripts/agreement.py` — compares the two label passes on the shared sample and writes `data/agreement.csv`.
 - `scripts/reconcile.py` — browser page where the two gold reviewers decide one final set of intervals per gold clip; `--apply` writes `data/agreement.csv` and the final gold rows. Logic checks in `scripts/test_reconcile.py`.
 - `scripts/split.py` — assigns every clip to train, validation or test, checks each split against the verified windows, and writes `data/splits.csv`.
 - `scripts/lighting.py` — fills lighting, visibility and occlusion in `data/annotations.csv` from the footage and the annotator's own reasons.
 - `data/gold-clips.txt` — the eight gold clips, one id per line, also the test split.
 - `scripts/windows.py` — builds exactly five-second labeled windows from the verified intervals, keeping only windows one verified model-class interval covers completely.
-- `scripts/frames.py` — decodes the frames of a window.
+- `scripts/frames.py` — decodes the frames of a window, optionally cropped to a supplied box before the 128 by 128 resize.
 - `scripts/detect.py` — seed box detector: per-pixel median background, MAD threshold and a temporal persistence filter, writing YOLO-format frames, labels and `outputs/detection/boxes.csv`. Logic checks in `scripts/test_detect.py`.
 - `scripts/model.py` — the frame CNN and its checkpoint format.
 - `scripts/train.py` — trains on the train split, early-stops on the validation split.
@@ -190,11 +199,16 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 - `scripts/train_detector.py` — trains the Task 2 detector on the seed boxes and self-trains a second round; holds the 8 gold clips out of both.
 - `scripts/features.py` — Task 3 silhouette features and the small classifier over them.
 - `scripts/demo_all.py` — one command for all three tasks on one clip: behavior, detector box and crop, and the four features.
+- `scripts/activity.py` — measures presence and movement on footage that has no annotation: a per-clip median background, a persistence filter, and an Active, Inactive or Absent label for each five-second window. Logic checks in `scripts/test_activity.py`.
+- `scripts/activity_report.py` — writes the active and inactive table and the two figures from an activity scan.
+- `scripts/audit_activity.py` — renders the contact sheets the activity audit is read from.
 - `scripts/metrics.py` — class metrics that count an abstention as a miss.
-- `scripts/build_site.py` — renders the demo clips with the prediction and verified bands burned in and writes `site/`, the static page that GitHub Pages publishes.
+- `scripts/build_site.py` — renders the demo clips with the prediction and verified bands burned in, copies the activity figures, and writes `site/`, the static page that GitHub Pages publishes.
 - `requirements.txt` — the pinned versions the pipeline was run with.
 - `docs/EVALUATION-REPORT.md` — the held-out result, coverage, agreement, error example and limits.
+- `docs/ACTIVITY-REPORT.md` — the active and inactive table for the banded civet, its figures, the held-out score and the limits.
 - `docs/PHASE-2-PLAN.md` — schedule, workstreams, evaluation, and risks.
+- `presentation/` — the reveal.js deck, its vendored reveal.js and fonts, and the exported PDF.
 - `docs/adr/` — project decisions and their rationale.
 - `docs/agents/` — issue-tracker and domain-document conventions for agents.
 
