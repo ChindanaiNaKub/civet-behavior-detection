@@ -52,9 +52,9 @@ The window is eight frames rather than every frame, because the question is
 whether the animal is moving, and eight samples of a five-second window show a
 change of posture or of position while keeping a whole night's windows in memory.
 
-The crop is the one addition this footage forced. A civet is about 60 pixels wide
-in a 1080p frame, which is 16 pixels after the 128 by 128 resize, and 16 pixels
-cannot show whether it is standing or lying down. `scripts/activity.py` already
+The crop is the one addition this footage forced. The median box around the
+animal is 216 pixels wide in a 1080p frame, which is 14 pixels after the 128 by
+128 resize, and 14 pixels cannot show whether it is standing or lying down. `scripts/activity.py` already
 knows where the animal is, so `scripts/frames.py` crops each window to that box
 plus a quarter of its size on each side before the resize. Without the crop the
 same run collapsed to predicting one class and scored validation macro F1 0.434.
@@ -64,9 +64,9 @@ same run collapsed to predicting one class and scored validation macro F1 0.434.
 The label is a measurement, not an annotation. `scripts/activity.py` does four
 things.
 
-1. **One sample per second at 480 by 270.** ffmpeg decodes every frame and keeps
-   one per second, so a seven-hour file costs one decode pass of about four
-   minutes and a quarter of its pixels.
+1. **One sample per second at 480 by 270.** ffmpeg decodes every frame, keeps one
+   per second and scales it to a quarter of its resolution, so a seven-hour file
+   costs one decode pass of about four minutes and 3.7 GB on disk.
 2. **The empty enclosure is the median of the whole clip.** The animal is absent
    from most of a night, so the per-pixel median is the room with nothing in it.
    This is why a long recording is required rather than preferred: a five-second
@@ -123,8 +123,8 @@ in it, the teal is the animal moving and the amber is the animal present and sti
 ![Active minutes per clock hour](figures/activity-by-hour.png)
 
 The activity is concentrated between 23:00 and 02:00, with a second cluster near
-21:00. The enclosure is empty from 04:00 onward on every camera that was still
-recording.
+21:00. Camera 3 stops recording at 02:07 and camera 2 at 01:49; only camera 1 is
+still recording after 04:00, and it sees the animal for a few more minutes.
 
 ## Evaluating the output
 
