@@ -73,9 +73,9 @@ def main() -> int:
     args = parser.parse_args()
 
     classes = [name.strip() for name in args.classes.split(",") if name.strip()]
-    unknown = [name for name in classes if name not in labels.ALL_LABELS]
+    unknown = [name for name in classes if name not in labels.ALL_LABELS + labels.ACTIVITY_CLASSES]
     if unknown:
-        parser.error(f"not a known behavior: {unknown}; known are {list(labels.ALL_LABELS)}")
+        parser.error(f"not a known behavior: {unknown}; known are {list(labels.ALL_LABELS + labels.ACTIVITY_CLASSES)}")
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)

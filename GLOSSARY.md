@@ -25,3 +25,27 @@ An interval in which the civet changes from one behavior to another; it is not o
 
 **Uncertain**:
 An annotation state used when the available evidence is insufficient to assign one behavior label.
+
+## Activity states
+
+These describe footage that has no annotation, where only what a fixed camera can
+measure is known. They are not behavior labels: an Active window does not say
+whether the animal was eating or walking, and they never appear in
+`data/annotations.csv`.
+
+**Active**:
+A five-second window in which the animal is in view and moving, either because
+its silhouette travels at least 0.05 body widths per second or because a fifth of
+it changed in a second.
+
+**Inactive**:
+A five-second window in which the animal is in view and neither of those holds.
+It is the camera's evidence of rest, not a verified Resting label.
+
+**Absent**:
+A five-second window in which the animal is not in view. A state of the table,
+never a training class.
+
+**Unmeasured**:
+A sampled frame the scan could not read because the whole view changed, as at
+dusk or when the infrared gain steps. Counted as neither presence nor absence.
