@@ -18,6 +18,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+import activity
 import frames
 import labels
 import metrics
@@ -69,6 +70,7 @@ def main() -> int:
     parser.add_argument("--batch", type=int, default=BATCH)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--classes", default=",".join(labels.MODEL_CLASSES), help="comma-separated classes this run covers")
+    parser.add_argument("--boxes", type=Path, default=None, help="activity frames.csv; crop each window to the animal's box")
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
 
@@ -93,8 +95,11 @@ def main() -> int:
         parser.error(f"need train and validation windows; have {len(train_windows)} and {len(val_windows)}")
 
     # data/raw/<relative_path> is where the tracked clips live (ADR 0002).
-    train_frames = frames.decode_windows(train_windows, args.clips_root, relative)
-    val_frames = frames.decode_windows(val_windows, args.clips_root, relative)
+    boxes = activity.crop_boxes(all_windows, args.boxes) if args.boxes else None
+    train_boxes = None if boxes is None else [boxes[i] for i, w in enumerate(all_windows) if w.split == "train"]
+    val_boxes = None if boxes is None else [boxes[i] for i, w in enumerate(all_windows) if w.split == "validation"]
+    train_frames = frames.decode_windows(train_windows, args.clips_root, relative, boxes=train_boxes)
+    val_frames = frames.decode_windows(val_windows, args.clips_root, relative, boxes=val_boxes)
     train_labels = [w.behavior for w in train_windows]
     val_labels = [w.behavior for w in val_windows]
     missing = [c for c in classes if c not in set(train_labels)]

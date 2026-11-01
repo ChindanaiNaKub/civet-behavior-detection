@@ -18,17 +18,27 @@ import numpy as np
 SAMPLES = 8
 WH = (128, 128)
 
+# Share of the box added on each side when a window is cropped to the animal, so
+# the crop keeps the ground it stands on and a little context.
+CROP_PAD = 0.25
+
 # torchvision's ImageNet statistics, because the backbone is pretrained on it.
 MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 
-def window_frames(cap, fps: float, start: float, end: float, samples: int = SAMPLES, wh=WH) -> np.ndarray:
+def window_frames(cap, fps: float, start: float, end: float, samples: int = SAMPLES, wh=WH, box=None) -> np.ndarray:
     """``samples`` evenly spaced frames of [start, end) as (samples, h, w, 3) uint8.
 
     ``cap`` is an open ``cv2.VideoCapture`` positioned at or before ``start``.
     A frame that fails to decode repeats the previous one, so a short or damaged
     read still yields a full window rather than a differently shaped array.
+
+    ``box`` is an optional (x1, y1, x2, y2) in fractions of the frame to crop to
+    before the resize, so a caller never needs the video's resolution. A civet 60 px
+    wide in a 1080p frame becomes 16 px at 128, which is too small to show a
+    posture, so a caller that knows where the animal is crops to it. Without a box
+    the whole frame is used, as it was before.
     """
     import cv2
 
@@ -43,6 +53,17 @@ def window_frames(cap, fps: float, start: float, end: float, samples: int = SAMP
             last = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         if last is None:
             raise RuntimeError("no frame decoded at the start of the window")
+        if box is not None:
+            height, width = last.shape[:2]
+            left, right = box[0] * width, box[2] * width
+            top, bottom = box[1] * height, box[3] * height
+            pad_x, pad_y = (right - left) * CROP_PAD, (bottom - top) * CROP_PAD
+            left = max(0, int(left - pad_x))
+            top = max(0, int(top - pad_y))
+            right = min(width, int(right + pad_x))
+            bottom = min(height, int(bottom + pad_y))
+            if right > left and bottom > top:
+                last = last[top:bottom, left:right]
         frames.append(cv2.resize(last, wh, interpolation=cv2.INTER_AREA))
         for _ in range(step - 1):
             if not cap.grab():
@@ -50,7 +71,7 @@ def window_frames(cap, fps: float, start: float, end: float, samples: int = SAMP
     return np.stack(frames)
 
 
-def clip_windows(path, spans, samples: int = SAMPLES, wh=WH) -> list[np.ndarray]:
+def clip_windows(path, spans, samples: int = SAMPLES, wh=WH, boxes=None) -> list[np.ndarray]:
     """Frames for every (start, end) span of one clip, in the order given."""
     import cv2
 
@@ -58,8 +79,12 @@ def clip_windows(path, spans, samples: int = SAMPLES, wh=WH) -> list[np.ndarray]
     if not cap.isOpened():
         raise RuntimeError(f"cannot open {path}")
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    boxes = boxes or [None] * len(spans)
     try:
-        return [window_frames(cap, fps, start, end, samples, wh) for start, end in spans]
+        return [
+            window_frames(cap, fps, start, end, samples, wh, box)
+            for (start, end), box in zip(spans, boxes)
+        ]
     finally:
         cap.release()
 
@@ -73,11 +98,13 @@ def to_tensor(batch: np.ndarray):
     return torch.from_numpy(np.ascontiguousarray(array.transpose(0, 1, 4, 2, 3)))
 
 
-def decode_windows(windows, clips_root, relative, samples: int = SAMPLES, wh=WH) -> np.ndarray:
+def decode_windows(windows, clips_root, relative, samples: int = SAMPLES, wh=WH, boxes=None) -> np.ndarray:
     """Frames for every window, in the order given, one decode pass per clip.
 
     ``relative`` maps a clip id to its path under ``clips_root`` (the ledger's
     ``relative_path`` column), so a caller never rebuilds that layout by hand.
+    ``boxes`` is an optional list, one (x1, y1, x2, y2) in full-frame pixels per
+    window, or None to keep the whole frame.
     """
     by_clip: dict[str, list[int]] = {}
     for i, win in enumerate(windows):
@@ -86,6 +113,7 @@ def decode_windows(windows, clips_root, relative, samples: int = SAMPLES, wh=WH)
     decoded = np.zeros((len(windows), samples, wh[1], wh[0], 3), dtype=np.uint8)
     for clip_id, indices in by_clip.items():
         spans = [(windows[i].start, windows[i].end) for i in indices]
-        for i, window in zip(indices, clip_windows(clips_root / relative[clip_id], spans, samples, wh)):
+        clip_boxes = None if boxes is None else [boxes[i] for i in indices]
+        for i, window in zip(indices, clip_windows(clips_root / relative[clip_id], spans, samples, wh, clip_boxes)):
             decoded[i] = window
     return decoded

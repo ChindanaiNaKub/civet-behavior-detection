@@ -316,6 +316,40 @@ def windows(rows: list[Row], duration_s: float) -> list[tuple[float, float, str]
     return out
 
 
+def crop_boxes(windows, frames_csv: Path) -> list[tuple[float, float, float, float] | None]:
+    """Fractional box of the animal for each window, or None where the scan had none.
+
+    The classifier sees a 128 by 128 view. In a 1080p frame the animal is about
+    60 px wide, which is 16 px after that resize, and 16 px cannot show whether a
+    civet is standing or lying down. The scan already knows where the animal is, so
+    each window is cropped to its box plus a margin before the resize.
+
+    Boxes are returned as fractions of the frame, so the caller does not need to
+    know the analysis resolution or the video's. The box is the one nearest the
+    middle of the window, and only within two seconds of it.
+    """
+    samples: dict[str, list[tuple[float, tuple[float, float, float, float]]]] = {}
+    with frames_csv.open(newline="") as handle:
+        for row in csv.DictReader(handle):
+            width, height = ANALYSIS_WH
+            box = (
+                int(row["x1"]) / width, int(row["y1"]) / height,
+                int(row["x2"]) / width, int(row["y2"]) / height,
+            )
+            samples.setdefault(row["clip_id"], []).append((float(row["time_s"]), box))
+
+    out: list[tuple[float, float, float, float] | None] = []
+    for window in windows:
+        middle = (window.start + window.end) / 2.0
+        best, distance = None, float("inf")
+        for time_s, box in samples.get(window.clip_id, []):
+            gap = abs(time_s - middle)
+            if gap < distance:
+                best, distance = box, gap
+        out.append(best if distance <= 2.0 else None)
+    return out
+
+
 # --- clip I/O ----------------------------------------------------------------
 
 
