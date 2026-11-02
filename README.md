@@ -6,7 +6,7 @@ Phase 2 project for building a checkable short-clip behavior-classification base
 
 | Item | Repository location and viewing links |
 |---|---|
-| GitHub repository | [ChindanaiNaKub/civet-behavior-detection](https://github.com/ChindanaiNaKub/civet-behavior-detection) — this repository is private; reviewers need access. |
+| GitHub repository | [ChindanaiNaKub/civet-behavior-detection](https://github.com/ChindanaiNaKub/civet-behavior-detection) |
 | Annotations | [data/annotations.csv](data/annotations.csv): final annotations; [data/annotations-second.csv](data/annotations-second.csv): second reviewer's annotations; [data/agreement.csv](data/agreement.csv): agreement results and reconciliation decisions; [data/splits.csv](data/splits.csv): train/validation/test assignments. See [data/README.md](data/README.md) for the data format. |
 | Presentation — **Final** | **[Open the final web slides](https://chindanainakub.github.io/civet-behavior-detection/presentation/)** — 28 slides with speaker notes. Source files: [presentation/index.html](presentation/index.html) and [presentation/deck.css](presentation/deck.css). Viewing instructions: [presentation/README.md](presentation/README.md). |
 | Training and evaluation results | [docs/BASELINE-DEMO.md](docs/BASELINE-DEMO.md): baseline training and demo; [docs/EVALUATION-REPORT.md](docs/EVALUATION-REPORT.md): behavior classification results; [docs/TASKS-2-AND-3.md](docs/TASKS-2-AND-3.md): YOLO and feature-based analysis; [docs/ACTIVITY-REPORT.md](docs/ACTIVITY-REPORT.md): Active/Inactive results. |
