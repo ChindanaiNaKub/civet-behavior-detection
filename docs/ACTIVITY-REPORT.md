@@ -173,6 +173,34 @@ The training set is 75 Inactive windows against 440 Active, so Inactive is the
 minority class by six to one. The inverse-frequency loss weight is what keeps the
 model from ignoring it, and the low Inactive precision is what that costs.
 
+### How much the score moves between runs
+
+The 0.664 above is one training run, seed 0, on one machine. It was repeated on a
+second machine with the same footage, scan tables and settings: seed 0 gave macro
+F1 0.649 and seed 1 gave 0.644, with the threshold again chosen on camera 3 and no
+abstain cap. The same windows score about 0.01 to 0.02 apart from one run to the
+next, so a difference of that size between two variants is not evidence that one
+is better. Inactive has 66 windows on camera 4, and a handful of them moving
+changes its F1 by several points.
+
+Two variants were tried on the same footing and reverted: frame differences as
+extra input (#37) and an abstain cap chosen on camera 3 (#38). Macro F1 over seeds
+0 and 1 on camera 4:
+
+| Variant | Seed 0 | Seed 1 |
+|---|---:|---:|
+| Plain model | 0.649 | 0.644 |
+| Frame differences (#37) | 0.639 | 0.644 |
+| 10% abstain cap (#38) | 0.649 | 0.633 |
+| Both | 0.634 | 0.626 |
+
+All eight runs fall between 0.626 and 0.649. The data shows neither variant
+helping, and it does not show either hurting by more than the spread of the plain
+model.
+
+Two seeds is too few for a mean and an interval. Read 0.664 as "about 0.65, give or
+take 0.02", and treat any gain smaller than that on this split as noise.
+
 ### The visual audit
 
 A measurement is only as good as what it looked at, so 24 windows of each state
