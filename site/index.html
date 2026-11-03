@@ -62,7 +62,7 @@
     font-family:"Helvetica Neue", sans-serif; }
   figure { margin:20px 0 6px; }
   figure img { width:100%; display:block; border:1px solid var(--rule); }
-  figcaption { margin-top:8px; font:12.5px/1.5 "Helvetica Neue", sans-serif; color:var(--muted); max-width:74ch; }
+  figcaption, .caption { margin-top:8px; font:12.5px/1.5 "Helvetica Neue", sans-serif; color:var(--muted); max-width:74ch; }
   .figgrid { display:grid; gap:22px; }
   code { font:13px/1.4 ui-monospace, "SF Mono", Menlo, monospace; background:var(--panel);
     padding:2px 5px; }
@@ -152,9 +152,19 @@
 </section>
 
 <section>
+  <h2><span class="num">03</span>YOLO detection</h2>
   <div class="row">
     <div>
-      <h2><span class="num">03</span>YOLO detection</h2>
+      <div class="player" data-rows="task2">
+        <video src="media/task2-detection.mp4" muted loop playsinline preload="metadata"></video>
+        <div class="readout"><b class="now">-</b><span class="meta"></span></div>
+      </div>
+      <p class="caption">The detector runs on every frame here, not only on the middle of a
+      window, so the box tracks the animal. Rust is the trained YOLO detector with its
+      confidence; moss is the per-clip background model, which takes over under 0.50. The
+      inset is the same frame enlarged.</p>
+    </div>
+    <div>
       <div class="big">
         <div><b>0.537</b><span>mAP50 on validation</span></div>
         <div><b>59%</b><span>held-out frames where the animal is found</span></div>
@@ -165,8 +175,24 @@
       model and the box colour on the video says which one fired.</p>
       <p><a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/TASKS-2-AND-3.md">Tasks 2 and 3 report</a></p>
     </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">04</span>Silhouette features</h2>
+  <div class="row">
     <div>
-      <h2><span class="num">04</span>Silhouette features</h2>
+      <div class="player" data-rows="task3">
+        <video src="media/task3-features.mp4" muted loop playsinline preload="metadata"></video>
+        <div class="readout"><b class="now">-</b><span class="meta"></span></div>
+      </div>
+      <p class="caption">Moss outline is the silhouette Task 3 measures, rust is its body axis,
+      cream is the limb extent across that axis. The numbers under the clip are the window
+      medians the classifier sees; the geometry is redrawn from the nearest sampled frame.
+      This clip is from the locked test split, scored once before the overlay was drawn, and
+      the overlay shows the measurement only, not the classifier's guess.</p>
+    </div>
+    <div>
       <div class="big">
         <div><b>0.422</b><span>macro F1, locked test</span></div>
         <div><b>0.190</b><span>majority-guess baseline</span></div>
@@ -242,11 +268,12 @@ python3 scripts/build_site.py</pre>
   <a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/ACTIVITY-REPORT.md">Activity report</a></p>
 </section>
 
-<footer>Built 2026-11-01 by <code>scripts/build_site.py</code>.
+<footer>Built 2026-11-03 by <code>scripts/build_site.py</code>.
 Numbers come from <code>outputs/evaluation.json</code> and the pipeline reports.</footer>
 </div>
 <script>
 const CLIPS = [{"id":"25690519193547292","path":"/home/prab/Documents/cmu/image_processing/group/civet-behavior-detection/data/raw/Eating/25690519193547292.mp4","group":"Eating","duration":68.84,"rendered_s":40.0,"windows":[{"start":0.0,"end":5.0,"label":"Eating","leaned":"Eating","confidence":0.573,"probabilities":[0.573,0.353,0.074],"verified":null,"excluded":"not_covered","box":[1026,752,1509,938],"source":"yolo","detector_conf":0.901,"features":{"body_angle_deg":21.8,"head_angle_deg":29.7,"speed_px_s":75.8,"limb_extent_px":178.5,"box_area_px":85904.0}},{"start":5.0,"end":10.0,"label":"Eating","leaned":"Eating","confidence":0.706,"probabilities":[0.706,0.264,0.03],"verified":null,"excluded":"not_covered","box":[750,588,882,766],"source":"motion","detector_conf":0.0,"features":{"body_angle_deg":50.2,"head_angle_deg":71.1,"speed_px_s":42.0,"limb_extent_px":109.9,"box_area_px":27840.0}},{"start":10.0,"end":15.0,"label":"Eating","leaned":"Eating","confidence":0.71,"probabilities":[0.71,0.252,0.038],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}},{"start":15.0,"end":20.0,"label":"Eating","leaned":"Eating","confidence":0.706,"probabilities":[0.706,0.264,0.03],"verified":"Eating","excluded":"","box":[644,368,700,408],"source":"motion","detector_conf":0.0,"features":{"body_angle_deg":124.9,"head_angle_deg":43.6,"speed_px_s":38.1,"limb_extent_px":51.9,"box_area_px":4188.0}},{"start":20.0,"end":25.0,"label":"Eating","leaned":"Eating","confidence":0.698,"probabilities":[0.698,0.257,0.045],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":93.8,"head_angle_deg":21.9,"speed_px_s":15.7,"limb_extent_px":59.9,"box_area_px":4834.0}},{"start":25.0,"end":30.0,"label":"Eating","leaned":"Eating","confidence":0.647,"probabilities":[0.647,0.318,0.036],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}},{"start":30.0,"end":35.0,"label":"Eating","leaned":"Eating","confidence":0.686,"probabilities":[0.686,0.281,0.032],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}},{"start":35.0,"end":40.0,"label":"Eating","leaned":"Eating","confidence":0.666,"probabilities":[0.666,0.296,0.039],"verified":"Eating","excluded":"","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}}]},{"id":"25690518091030781","path":"/home/prab/Documents/cmu/image_processing/group/civet-behavior-detection/data/raw/Locomotion/25690518091030781.mp4","group":"Locomotion","duration":10.24,"rendered_s":10.0,"windows":[{"start":0.0,"end":5.0,"label":"Locomotion","leaned":"Locomotion","confidence":0.485,"probabilities":[0.108,0.485,0.407],"verified":"Locomotion","excluded":"","box":[541,892,1019,992],"source":"yolo","detector_conf":0.701,"features":{"body_angle_deg":150.1,"head_angle_deg":76.0,"speed_px_s":287.9,"limb_extent_px":159.1,"box_area_px":85142.0}},{"start":5.0,"end":10.0,"label":"Locomotion","leaned":"Locomotion","confidence":0.488,"probabilities":[0.069,0.488,0.443],"verified":null,"excluded":"not_covered","box":null,"source":"none","detector_conf":0.0,"features":{"body_angle_deg":140.4,"head_angle_deg":144.4,"speed_px_s":187.6,"limb_extent_px":102.9,"box_area_px":43052.0}}]},{"id":"25690519195143424","path":"/home/prab/Documents/cmu/image_processing/group/civet-behavior-detection/data/raw/Resting/25690519195143424.mp4","group":"Resting","duration":122.24,"rendered_s":40.0,"windows":[{"start":0.0,"end":5.0,"label":"Resting","leaned":"Resting","confidence":0.802,"probabilities":[0.024,0.174,0.802],"verified":null,"excluded":"not_covered","box":[854,186,1070,284],"source":"motion","detector_conf":0.0,"features":{"body_angle_deg":179.6,"head_angle_deg":159.1,"speed_px_s":1.6,"limb_extent_px":98.0,"box_area_px":22000.0}},{"start":5.0,"end":10.0,"label":"Resting","leaned":"Resting","confidence":0.837,"probabilities":[0.021,0.142,0.837],"verified":null,"excluded":"not_covered","box":[783,144,1041,312],"source":"yolo","detector_conf":0.839,"features":{"body_angle_deg":9.3,"head_angle_deg":123.5,"speed_px_s":22.2,"limb_extent_px":138.2,"box_area_px":53460.0}},{"start":10.0,"end":15.0,"label":"Resting","leaned":"Resting","confidence":0.837,"probabilities":[0.026,0.137,0.837],"verified":null,"excluded":"non_class_label","box":[855,134,1089,304],"source":"yolo","detector_conf":0.805,"features":{"body_angle_deg":169.5,"head_angle_deg":108.0,"speed_px_s":14.1,"limb_extent_px":165.8,"box_area_px":40584.0}},{"start":15.0,"end":20.0,"label":"Resting","leaned":"Resting","confidence":0.866,"probabilities":[0.024,0.11,0.866],"verified":null,"excluded":"non_class_label","box":[871,171,1057,307],"source":"yolo","detector_conf":0.762,"features":{"body_angle_deg":6.0,"head_angle_deg":37.1,"speed_px_s":15.9,"limb_extent_px":129.2,"box_area_px":28600.0}},{"start":20.0,"end":25.0,"label":"Resting","leaned":"Resting","confidence":0.854,"probabilities":[0.02,0.127,0.854],"verified":null,"excluded":"not_covered","box":[860,182,1031,300],"source":"yolo","detector_conf":0.588,"features":{"body_angle_deg":176.2,"head_angle_deg":17.4,"speed_px_s":4.9,"limb_extent_px":95.4,"box_area_px":16920.0}},{"start":25.0,"end":30.0,"label":"Resting","leaned":"Resting","confidence":0.864,"probabilities":[0.022,0.114,0.864],"verified":"Resting","excluded":"","box":[946,184,1042,252],"source":"motion","detector_conf":0.496,"features":{"body_angle_deg":148.8,"head_angle_deg":82.4,"speed_px_s":17.5,"limb_extent_px":76.8,"box_area_px":8402.0}},{"start":30.0,"end":35.0,"label":"Resting","leaned":"Resting","confidence":0.854,"probabilities":[0.024,0.123,0.854],"verified":"Resting","excluded":"","box":[851,186,1054,301],"source":"yolo","detector_conf":0.838,"features":{"body_angle_deg":160.1,"head_angle_deg":57.8,"speed_px_s":7.8,"limb_extent_px":68.9,"box_area_px":6194.0}},{"start":35.0,"end":40.0,"label":"Resting","leaned":"Resting","confidence":0.836,"probabilities":[0.025,0.139,0.836],"verified":"Resting","excluded":"","box":[850,187,1055,302],"source":"yolo","detector_conf":0.711,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}}]}];
+const TASKS = {"task2":[{"start":0.0,"end":5.0,"label":"Resting","leaned":"Resting","confidence":0.802,"probabilities":[0.024,0.174,0.802],"verified":null,"excluded":"not_covered","box":[854,186,1070,284],"source":"motion","detector_conf":0.0,"features":{"body_angle_deg":179.6,"head_angle_deg":159.1,"speed_px_s":1.6,"limb_extent_px":98.0,"box_area_px":22000.0}},{"start":5.0,"end":10.0,"label":"Resting","leaned":"Resting","confidence":0.837,"probabilities":[0.021,0.142,0.837],"verified":null,"excluded":"not_covered","box":[783,144,1041,312],"source":"yolo","detector_conf":0.839,"features":{"body_angle_deg":9.3,"head_angle_deg":123.5,"speed_px_s":22.2,"limb_extent_px":138.2,"box_area_px":53460.0}},{"start":10.0,"end":15.0,"label":"Resting","leaned":"Resting","confidence":0.837,"probabilities":[0.026,0.137,0.837],"verified":null,"excluded":"non_class_label","box":[855,134,1089,304],"source":"yolo","detector_conf":0.805,"features":{"body_angle_deg":169.5,"head_angle_deg":108.0,"speed_px_s":14.1,"limb_extent_px":165.8,"box_area_px":40584.0}},{"start":15.0,"end":20.0,"label":"Resting","leaned":"Resting","confidence":0.866,"probabilities":[0.024,0.11,0.866],"verified":null,"excluded":"non_class_label","box":[871,171,1057,307],"source":"yolo","detector_conf":0.762,"features":{"body_angle_deg":6.0,"head_angle_deg":37.1,"speed_px_s":15.9,"limb_extent_px":129.2,"box_area_px":28600.0}},{"start":20.0,"end":25.0,"label":"Resting","leaned":"Resting","confidence":0.854,"probabilities":[0.02,0.127,0.854],"verified":null,"excluded":"not_covered","box":[860,182,1031,300],"source":"yolo","detector_conf":0.588,"features":{"body_angle_deg":176.2,"head_angle_deg":17.4,"speed_px_s":4.9,"limb_extent_px":95.4,"box_area_px":16920.0}},{"start":25.0,"end":30.0,"label":"Resting","leaned":"Resting","confidence":0.864,"probabilities":[0.022,0.114,0.864],"verified":"Resting","excluded":"","box":[946,184,1042,252],"source":"motion","detector_conf":0.496,"features":{"body_angle_deg":148.8,"head_angle_deg":82.4,"speed_px_s":17.5,"limb_extent_px":76.8,"box_area_px":8402.0}},{"start":30.0,"end":35.0,"label":"Resting","leaned":"Resting","confidence":0.854,"probabilities":[0.024,0.123,0.854],"verified":"Resting","excluded":"","box":[851,186,1054,301],"source":"yolo","detector_conf":0.838,"features":{"body_angle_deg":160.1,"head_angle_deg":57.8,"speed_px_s":7.8,"limb_extent_px":68.9,"box_area_px":6194.0}},{"start":35.0,"end":40.0,"label":"Resting","leaned":"Resting","confidence":0.836,"probabilities":[0.025,0.139,0.836],"verified":"Resting","excluded":"","box":[850,187,1055,302],"source":"yolo","detector_conf":0.711,"features":{"body_angle_deg":null,"head_angle_deg":null,"speed_px_s":null,"limb_extent_px":null,"box_area_px":null}}],"task3":[{"start":0.0,"end":5.0,"label":"Eating","leaned":"Eating","confidence":0.728,"probabilities":[0.728,0.234,0.038],"verified":null,"excluded":"not_covered","box":[408,462,606,528],"source":"motion","detector_conf":0.0,"features":{"body_angle_deg":6.1,"head_angle_deg":161.1,"speed_px_s":1.0,"limb_extent_px":62.6,"box_area_px":12408.0}},{"start":5.0,"end":10.0,"label":"Eating","leaned":"Eating","confidence":0.69,"probabilities":[0.69,0.262,0.048],"verified":null,"excluded":"not_covered","box":[606,510,674,564],"source":"motion","detector_conf":0.366,"features":{"body_angle_deg":25.4,"head_angle_deg":15.7,"speed_px_s":22.8,"limb_extent_px":51.9,"box_area_px":3188.0}},{"start":10.0,"end":15.0,"label":"Eating","leaned":"Eating","confidence":0.687,"probabilities":[0.687,0.26,0.053],"verified":"Eating","excluded":"","box":[632,472,700,550],"source":"motion","detector_conf":0.0,"features":{"body_angle_deg":42.8,"head_angle_deg":23.9,"speed_px_s":20.4,"limb_extent_px":68.4,"box_area_px":6384.0}},{"start":15.0,"end":20.0,"label":"Eating","leaned":"Eating","confidence":0.666,"probabilities":[0.666,0.279,0.054],"verified":"Eating","excluded":"","box":[341,365,624,534],"source":"yolo","detector_conf":0.584,"features":{"body_angle_deg":118.5,"head_angle_deg":18.8,"speed_px_s":23.9,"limb_extent_px":50.7,"box_area_px":3480.0}},{"start":20.0,"end":25.0,"label":"Eating","leaned":"Eating","confidence":0.688,"probabilities":[0.688,0.259,0.053],"verified":"Eating","excluded":"","box":[340,375,697,537],"source":"yolo","detector_conf":0.682,"features":{"body_angle_deg":45.2,"head_angle_deg":21.1,"speed_px_s":25.9,"limb_extent_px":57.2,"box_area_px":5156.0}},{"start":25.0,"end":30.0,"label":"Eating","leaned":"Eating","confidence":0.693,"probabilities":[0.693,0.254,0.054],"verified":"Eating","excluded":"","box":[343,374,693,531],"source":"yolo","detector_conf":0.861,"features":{"body_angle_deg":31.4,"head_angle_deg":38.2,"speed_px_s":22.7,"limb_extent_px":48.2,"box_area_px":3906.0}},{"start":30.0,"end":35.0,"label":"Eating","leaned":"Eating","confidence":0.702,"probabilities":[0.702,0.244,0.053],"verified":"Eating","excluded":"","box":[338,370,607,570],"source":"yolo","detector_conf":0.815,"features":{"body_angle_deg":138.0,"head_angle_deg":132.0,"speed_px_s":23.6,"limb_extent_px":49.2,"box_area_px":4680.0}},{"start":35.0,"end":40.0,"label":"Eating","leaned":"Eating","confidence":0.692,"probabilities":[0.692,0.26,0.049],"verified":"Eating","excluded":"","box":[346,368,742,533],"source":"yolo","detector_conf":0.764,"features":{"body_angle_deg":16.1,"head_angle_deg":14.2,"speed_px_s":13.3,"limb_extent_px":49.2,"box_area_px":5184.0}}]};
 const stages = [...document.querySelectorAll('.stage')];
 const tabs = [...document.querySelectorAll('.tab')];
 let active = CLIPS[0].id;
@@ -284,6 +311,31 @@ function paint() {
     (row.features.speed_px_s === null ? ' · no silhouette' : ` · speed ${row.features.speed_px_s} px/s`) +
     (row.excluded ? ` · not scored: ${row.excluded.replace('_', ' ')}` : '');
 }
+
+document.querySelectorAll('.player').forEach(player => {
+  const rows = TASKS[player.dataset.rows];
+  const video = player.querySelector('video');
+  const paintOne = () => {
+    const index = rows.findIndex(r => video.currentTime >= r.start && video.currentTime < r.end);
+    const row = rows[Math.max(0, index)];
+    const f = row.features;
+    const value = v => (v === null ? '-' : v);
+    const span = `${row.start.toFixed(0)}-${row.end.toFixed(0)} s`;
+    if (player.dataset.rows === 'task2') {
+      player.querySelector('b.now').textContent = row.source === 'yolo'
+        ? `YOLO ${row.detector_conf.toFixed(2)}` : row.source === 'motion' ? 'background model' : 'no box';
+      player.querySelector('.meta').textContent = span
+        + (row.box ? ` · box ${row.box[2] - row.box[0]}×${row.box[3] - row.box[1]} px` : ' · nothing found');
+    } else {
+      player.querySelector('b.now').textContent = span;
+      player.querySelector('.meta').textContent = 'window median'
+        + ` · body ${value(f.body_angle_deg)}° · head ${value(f.head_angle_deg)}°`
+        + ` · speed ${value(f.speed_px_s)} px/s · limb ${value(f.limb_extent_px)} px`;
+    }
+  };
+  video.addEventListener('timeupdate', paintOne);
+  paintOne();
+});
 
 tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.clip)));
 stages.forEach(s => {

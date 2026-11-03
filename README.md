@@ -217,7 +217,7 @@ The 22 source clips are committed under `data/raw/<folder>/<clip_id>.mp4`, match
 - `scripts/activity_report.py` — writes the active and inactive table and the two figures from an activity scan.
 - `scripts/audit_activity.py` — renders the contact sheets the activity audit is read from.
 - `scripts/metrics.py` — class metrics that count an abstention as a miss.
-- `scripts/build_site.py` — renders the demo clips with the prediction and verified bands burned in, copies the activity figures, and writes `site/`, the static page that GitHub Pages publishes.
+- `scripts/build_site.py` — renders the demo clips with their overlays burned in (prediction and verified bands, a per-frame detection box, the Task 3 silhouette), copies the activity figures, and writes `site/`, the static page that GitHub Pages publishes.
 - `requirements.txt` — the pinned versions the pipeline was run with.
 - `docs/EVALUATION-REPORT.md` — the held-out result, coverage, agreement, error example and limits.
 - `docs/ACTIVITY-REPORT.md` — the active and inactive table for the banded civet, its figures, the held-out score and the limits.

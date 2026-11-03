@@ -18,7 +18,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -30,6 +32,7 @@ import numpy as np
 import torch
 
 import demo_all as D
+import detect
 import features
 import frames
 import model as M
@@ -43,13 +46,14 @@ FPS_FALLBACK = 25.0
 
 INK = (0x22, 0x24, 0x1F)
 BG = (0xF3, 0xEE, 0xDF)
-RUST = (0xC4, 0x5A, 0x3B)
-MOSS = (0x87, 0x96, 0x6F)
-FOREST = (0x28, 0x42, 0x36)
 CLASS_BGR = {"Eating": (0x3B, 0x5A, 0xC4), "Locomotion": (0x6F, 0x96, 0x87),
              "Resting": (0x36, 0x42, 0x28), "Uncertain": (0x60, 0x63, 0x64)}
 CLASS_HEX = {"Eating": "#C45A3B", "Locomotion": "#87966F", "Resting": "#284236",
              "Uncertain": "#64675E"}
+INSET_SIZE, INSET_MARGIN, INSET_TOP = 300, 18, 78
+INSET_MIN_REGION = 170   # a box smaller than this is a head crop, so widen it around the animal
+# cv2 wants BGR, so the page palette is flipped here.
+RUST_BGR, MOSS_BGR, FOREST_BGR = (0x3B, 0x5A, 0xC4), (0x6F, 0x96, 0x87), (0x36, 0x42, 0x28)
 
 
 def video_size(path: Path) -> tuple[float, float, int]:
@@ -141,19 +145,66 @@ def timeline_strip(frame: np.ndarray, rows: list[dict], current: int) -> None:
                         0.4, (243, 238, 223) if value != "excluded" else (0x5E, 0x67, 0x64), 1, cv2.LINE_AA)
 
 
-def render(info: dict, out: Path) -> None:
-    source = Path(info["path"])
-    rows = info["windows"]
-    _, fps, _ = video_size(source)
-    limit = int(round(info["rendered_s"] * fps))
+def start_encoder(out: Path, fps: float) -> subprocess.Popen:
     out.parent.mkdir(parents=True, exist_ok=True)
-    encoder = subprocess.Popen(
+    return subprocess.Popen(
         ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgr24",
          "-s", f"{RENDER_WIDTH}x{RENDER_HEIGHT}", "-r", f"{fps}", "-i", "-",
          "-c:v", "libx264", "-preset", "medium", "-crf", str(CRF), "-pix_fmt", "yuv420p",
          "-movflags", "+faststart", str(out)],
         stdin=subprocess.PIPE,
     )
+
+
+def finish(encoder: subprocess.Popen, out: Path) -> None:
+    encoder.stdin.close()
+    if encoder.wait() != 0:
+        raise SystemExit(f"ffmpeg failed writing {out}")
+    if out.stat().st_size < 100_000:
+        raise SystemExit(f"{out} looks empty ({out.stat().st_size} bytes)")
+
+
+def box_label(frame: np.ndarray, x1: int, y1: int, text: str, colour: tuple[int, int, int]) -> None:
+    """A filled tab above the box. Never above the banner."""
+    width = 10 + 9 * len(text)
+    top = max(66, y1 - 22)
+    cv2.rectangle(frame, (x1, top), (x1 + width, top + 20), colour, -1)
+    cv2.putText(frame, text, (x1 + 5, top + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                (243, 238, 223), 1, cv2.LINE_AA)
+
+
+def draw_inset(frame: np.ndarray, region: tuple[int, int, int, int], source: np.ndarray | None = None):
+    """Paste an enlarged crop top right; returns (x, y, zoom, origin) for mapping points.
+
+    ``source`` is cropped instead of ``frame`` when the box and its tab are already drawn
+    on ``frame`` but should not be enlarged into the inset.
+    """
+    x1, y1, x2, y2 = region
+    span = max(x2 - x1, y2 - y1, INSET_MIN_REGION)
+    middle_x, middle_y = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+    x1 = max(0, int(middle_x - span / 2))
+    y1 = max(0, int(middle_y - span / 2))
+    x2 = min(frame.shape[1], x1 + span)
+    y2 = min(frame.shape[0], y1 + span)
+    if x2 - x1 < 8 or y2 - y1 < 8:
+        return None
+    crop = (frame if source is None else source)[y1:y2, x1:x2].copy()
+    zoom = min(INSET_SIZE / crop.shape[1], INSET_SIZE / crop.shape[0])
+    view = cv2.resize(crop, (int(crop.shape[1] * zoom), int(crop.shape[0] * zoom)),
+                      interpolation=cv2.INTER_NEAREST)
+    left, top = RENDER_WIDTH - view.shape[1] - INSET_MARGIN, INSET_TOP
+    frame[top:top + view.shape[0], left:left + view.shape[1]] = view
+    cv2.rectangle(frame, (left - 2, top - 2), (left + view.shape[1] + 1, top + view.shape[0] + 1),
+                  (243, 238, 223), 2)
+    return left, top, zoom, (x1, y1)
+
+
+def render(info: dict, out: Path) -> None:
+    source = Path(info["path"])
+    rows = info["windows"]
+    _, fps, _ = video_size(source)
+    limit = int(round(info["rendered_s"] * fps))
+    encoder = start_encoder(out, fps)
     cap = cv2.VideoCapture(str(source))
     source_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH) or RENDER_WIDTH
     scale = RENDER_WIDTH / float(source_width)
@@ -170,21 +221,141 @@ def render(info: dict, out: Path) -> None:
             x1, y1, x2, y2 = [int(value * scale) for value in row["box"]]
             colour = (0x3B, 0x5A, 0xC4) if row["source"] == "yolo" else (0x8F, 0x96, 0x87)
             cv2.rectangle(frame, (x1, y1), (x2, y2), colour, 3)
-            label_top = max(74, y1 - 22)
-            cv2.rectangle(frame, (x1, label_top), (x1 + 78, label_top + 20), colour, -1)
-            cv2.putText(frame, row["source"], (x1 + 6, label_top + 15), cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5, (243, 238, 223), 1, cv2.LINE_AA)
+            label = f"yolo {row['detector_conf']:.2f}" if row["source"] == "yolo" else "background"
+            box_label(frame, x1, y1, label, colour)
         banner(frame, f"Task 1  {row['label']}  {row['confidence']:.2f}",
                f"{row['start']:.0f}-{row['end']:.0f} s   Task 2 box: {row['source']}")
         timeline_strip(frame, rows, current)
         encoder.stdin.write(frame.tobytes())
         index += 1
     cap.release()
-    encoder.stdin.close()
-    if encoder.wait() != 0:
-        raise SystemExit(f"ffmpeg failed writing {out}")
-    if out.stat().st_size < 100_000:
-        raise SystemExit(f"{out} looks empty ({out.stat().st_size} bytes)")
+    finish(encoder, out)
+
+
+def render_detection(info: dict, detector, out: Path) -> None:
+    """Task 2 on its own: the detector runs on every rendered frame, so the box tracks the animal."""
+    source = Path(info["path"])
+    rows = info["windows"]
+    _, fps, _ = video_size(source)
+    limit = int(round(info["rendered_s"] * fps))
+    fallback = D.per_clip_boxes(source)
+    encoder = start_encoder(out, fps)
+    cap = cv2.VideoCapture(str(source))
+    source_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH) or RENDER_WIDTH
+    scale = RENDER_WIDTH / float(source_width)
+    index = 0
+    while index < limit:
+        ok, frame = cap.read()
+        if not ok:
+            break
+        time_s = index / fps
+        current = min(int(time_s // 5.0), len(rows) - 1)
+        box, confidence = D.yolo_top_box(detector, frame)
+        label, colour = "no box", RUST_BGR
+        if box is not None and confidence >= D.YOLO_TRUST:
+            label = f"YOLO {confidence:.2f}"
+        else:
+            box = D.nearest_box(fallback, time_s)
+            label, colour = "background model", MOSS_BGR
+        frame = cv2.resize(frame, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
+        if box is not None:
+            clean = frame.copy()
+            x1, y1, x2, y2 = [int(value * scale) for value in box]
+            cv2.rectangle(frame, (x1, y1), (x2, y2), colour, 3)
+            box_label(frame, x1, y1, label, colour)
+            pad = max(12, int(0.3 * max(x2 - x1, y2 - y1)))
+            inset = draw_inset(frame, (x1 - pad, y1 - pad, x2 + pad, y2 + pad), clean)
+            if inset is not None:
+                left, top, zoom, (cx, cy) = inset
+                cv2.rectangle(frame,
+                              (int(left + (x1 - cx) * zoom), int(top + (y1 - cy) * zoom)),
+                              (int(left + (x2 - cx) * zoom), int(top + (y2 - cy) * zoom)),
+                              colour, 2)
+        banner(frame, f"Task 2  animal detection  {label}",
+               f"{rows[current]['start']:.0f}-{rows[current]['end']:.0f} s   "
+               f"rust: trained YOLO   moss: per-clip background model")
+        encoder.stdin.write(frame.tobytes())
+        index += 1
+    cap.release()
+    finish(encoder, out)
+
+
+def silhouette_geometry(sample: features.Sample, scale: float) -> dict:
+    """The mask's contour, centroid and two axes, mapped from analysis pixels to render pixels."""
+    factor = scale / detect.SCALE
+    x1, y1 = sample.box[0], sample.box[1]
+    contours, _ = cv2.findContours(sample.mask.astype(np.uint8), cv2.RETR_EXTERNAL,
+                                   cv2.CHAIN_APPROX_SIMPLE)
+    mapped = [np.round((contour.reshape(-1, 2) + (x1, y1)) * factor).astype(np.int32)
+              for contour in contours]
+    rows, columns = np.nonzero(sample.mask)
+    centroid = ((float(columns.mean()) + x1) * factor, (float(rows.mean()) + y1) * factor)
+    theta = math.radians(sample.body_angle_deg)
+    along = 0.5 * max(sample.box[2] - sample.box[0], sample.box[3] - sample.box[1]) * factor
+    limb = 0.5 * sample.limb_extent_px * scale
+    body = ((centroid[0] - math.cos(theta) * along, centroid[1] - math.sin(theta) * along),
+            (centroid[0] + math.cos(theta) * along, centroid[1] + math.sin(theta) * along))
+    across = ((centroid[0] + math.sin(theta) * limb, centroid[1] - math.cos(theta) * limb),
+              (centroid[0] - math.sin(theta) * limb, centroid[1] + math.cos(theta) * limb))
+    return {"contours": mapped, "centroid": centroid, "body": body, "limb": across}
+
+
+def draw_geometry(frame: np.ndarray, parts: dict, mapper=None) -> None:
+    """Draw the silhouette, the body axis and the limb extent, optionally through an inset mapping."""
+    point = mapper or (lambda p: (int(p[0]), int(p[1])))
+    for contour in parts["contours"]:
+        cv2.polylines(frame, [np.array([point(p) for p in contour], np.int32)], True,
+                      MOSS_BGR, 2, cv2.LINE_AA)
+    cv2.line(frame, point(parts["body"][0]), point(parts["body"][1]), RUST_BGR, 3, cv2.LINE_AA)
+    cv2.line(frame, point(parts["limb"][0]), point(parts["limb"][1]), (0xDF, 0xEE, 0xF3), 2, cv2.LINE_AA)
+    cv2.circle(frame, point(parts["centroid"]), 4, (0xDF, 0xEE, 0xF3), -1, cv2.LINE_AA)
+
+
+def render_features(info: dict, samples: list[features.Sample], out: Path) -> None:
+    """Task 3 on its own: the silhouette, the body axis, the limb extent and the four numbers."""
+    source = Path(info["path"])
+    rows = info["windows"]
+    _, fps, _ = video_size(source)
+    limit = int(round(info["rendered_s"] * fps))
+    times = [sample.time_s for sample in samples]
+    encoder = start_encoder(out, fps)
+    cap = cv2.VideoCapture(str(source))
+    source_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH) or RENDER_WIDTH
+    scale = RENDER_WIDTH / float(source_width)
+    index = 0
+    while index < limit:
+        ok, frame = cap.read()
+        if not ok:
+            break
+        time_s = index / fps
+        current = min(int(time_s // 5.0), len(rows) - 1)
+        row = rows[current]
+        frame = cv2.resize(frame, (RENDER_WIDTH, RENDER_HEIGHT), interpolation=cv2.INTER_AREA)
+        found = bisect.bisect_right(times, time_s) - 1
+        if found >= 0:
+            sample = samples[found]
+            parts = silhouette_geometry(sample, scale)
+            factor = scale / detect.SCALE
+            x1, y1, x2, y2 = [int(value * factor) for value in sample.box]
+            clean = frame.copy()
+            cv2.rectangle(frame, (x1, y1), (x2, y2), FOREST_BGR, 2)
+            draw_geometry(frame, parts)
+            pad = max(12, int(0.3 * max(x2 - x1, y2 - y1)))
+            inset = draw_inset(frame, (x1 - pad, y1 - pad, x2 + pad, y2 + pad), clean)
+            if inset is not None:
+                left, top, zoom, (cx, cy) = inset
+                draw_geometry(frame, parts, lambda p: (int(left + (p[0] - cx) * zoom),
+                                                       int(top + (p[1] - cy) * zoom)))
+        values = row["features"]
+        shown = {name: "-" if value is None else f"{value:.0f}" for name, value in values.items()
+                 if name != "box_area_px"}
+        banner(frame, "Task 3  silhouette features",
+               f"window median   body {shown['body_angle_deg']}  head {shown['head_angle_deg']}"
+               f"  speed {shown['speed_px_s']} px/s  limb {shown['limb_extent_px']} px")
+        encoder.stdin.write(frame.tobytes())
+        index += 1
+    cap.release()
+    finish(encoder, out)
 
 
 def reported_numbers() -> dict:
@@ -232,10 +403,12 @@ def model_segments(clip: dict) -> str:
         f'<span>{row["label"]}</span></button>' for row in clip["windows"])
 
 
-def page(clips: list[dict], evaluation: dict, numbers: dict) -> str:
+def page(clips: list[dict], evaluation: dict, numbers: dict, task2: dict, task3: dict) -> str:
     test = evaluation["test"]
     classes = test["classes"]
     clip_json = json.dumps(clips, separators=(",", ":"))
+    task_json = json.dumps({"task2": task2["windows"], "task3": task3["windows"]},
+                           separators=(",", ":"))
     tabs = "\n".join(
         f'<button class="tab" data-clip="{clip["id"]}" title="{clip["id"]}">{clip["group"]}'
         f' &middot; {clip["id"][-6:]}</button>' for clip in clips)
@@ -319,7 +492,7 @@ def page(clips: list[dict], evaluation: dict, numbers: dict) -> str:
     font-family:"Helvetica Neue", sans-serif; }}
   figure {{ margin:20px 0 6px; }}
   figure img {{ width:100%; display:block; border:1px solid var(--rule); }}
-  figcaption {{ margin-top:8px; font:12.5px/1.5 "Helvetica Neue", sans-serif; color:var(--muted); max-width:74ch; }}
+  figcaption, .caption {{ margin-top:8px; font:12.5px/1.5 "Helvetica Neue", sans-serif; color:var(--muted); max-width:74ch; }}
   .figgrid {{ display:grid; gap:22px; }}
   code {{ font:13px/1.4 ui-monospace, "SF Mono", Menlo, monospace; background:var(--panel);
     padding:2px 5px; }}
@@ -380,9 +553,19 @@ def page(clips: list[dict], evaluation: dict, numbers: dict) -> str:
 </section>
 
 <section>
+  <h2><span class="num">03</span>YOLO detection</h2>
   <div class="row">
     <div>
-      <h2><span class="num">03</span>YOLO detection</h2>
+      <div class="player" data-rows="task2">
+        <video src="media/task2-detection.mp4" muted loop playsinline preload="metadata"></video>
+        <div class="readout"><b class="now">-</b><span class="meta"></span></div>
+      </div>
+      <p class="caption">The detector runs on every frame here, not only on the middle of a
+      window, so the box tracks the animal. Rust is the trained YOLO detector with its
+      confidence; moss is the per-clip background model, which takes over under 0.50. The
+      inset is the same frame enlarged.</p>
+    </div>
+    <div>
       <div class="big">
         <div><b>{numbers['detector_map50']}</b><span>mAP50 on validation</span></div>
         <div><b>{numbers['heldout_hit']}%</b><span>held-out frames where the animal is found</span></div>
@@ -393,8 +576,24 @@ def page(clips: list[dict], evaluation: dict, numbers: dict) -> str:
       model and the box colour on the video says which one fired.</p>
       <p><a href="https://github.com/ChindanaiNaKub/civet-behavior-detection/blob/main/docs/TASKS-2-AND-3.md">Tasks 2 and 3 report</a></p>
     </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">04</span>Silhouette features</h2>
+  <div class="row">
     <div>
-      <h2><span class="num">04</span>Silhouette features</h2>
+      <div class="player" data-rows="task3">
+        <video src="media/task3-features.mp4" muted loop playsinline preload="metadata"></video>
+        <div class="readout"><b class="now">-</b><span class="meta"></span></div>
+      </div>
+      <p class="caption">Moss outline is the silhouette Task 3 measures, rust is its body axis,
+      cream is the limb extent across that axis. The numbers under the clip are the window
+      medians the classifier sees; the geometry is redrawn from the nearest sampled frame.
+      This clip is from the locked test split, scored once before the overlay was drawn, and
+      the overlay shows the measurement only, not the classifier's guess.</p>
+    </div>
+    <div>
       <div class="big">
         <div><b>{numbers['feature_f1']}</b><span>macro F1, locked test</span></div>
         <div><b>0.190</b><span>majority-guess baseline</span></div>
@@ -475,6 +674,7 @@ Numbers come from <code>outputs/evaluation.json</code> and the pipeline reports.
 </div>
 <script>
 const CLIPS = {clip_json};
+const TASKS = {task_json};
 const stages = [...document.querySelectorAll('.stage')];
 const tabs = [...document.querySelectorAll('.tab')];
 let active = CLIPS[0].id;
@@ -513,6 +713,31 @@ function paint() {{
     (row.excluded ? ` · not scored: ${{row.excluded.replace('_', ' ')}}` : '');
 }}
 
+document.querySelectorAll('.player').forEach(player => {{
+  const rows = TASKS[player.dataset.rows];
+  const video = player.querySelector('video');
+  const paintOne = () => {{
+    const index = rows.findIndex(r => video.currentTime >= r.start && video.currentTime < r.end);
+    const row = rows[Math.max(0, index)];
+    const f = row.features;
+    const value = v => (v === null ? '-' : v);
+    const span = `${{row.start.toFixed(0)}}-${{row.end.toFixed(0)}} s`;
+    if (player.dataset.rows === 'task2') {{
+      player.querySelector('b.now').textContent = row.source === 'yolo'
+        ? `YOLO ${{row.detector_conf.toFixed(2)}}` : row.source === 'motion' ? 'background model' : 'no box';
+      player.querySelector('.meta').textContent = span
+        + (row.box ? ` · box ${{row.box[2] - row.box[0]}}×${{row.box[3] - row.box[1]}} px` : ' · nothing found');
+    }} else {{
+      player.querySelector('b.now').textContent = span;
+      player.querySelector('.meta').textContent = 'window median'
+        + ` · body ${{value(f.body_angle_deg)}}° · head ${{value(f.head_angle_deg)}}°`
+        + ` · speed ${{value(f.speed_px_s)}} px/s · limb ${{value(f.limb_extent_px)}} px`;
+    }}
+  }};
+  video.addEventListener('timeupdate', paintOne);
+  paintOne();
+}});
+
 tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.clip)));
 stages.forEach(s => {{
   s.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', () => {{
@@ -536,6 +761,12 @@ def main() -> int:
     parser.add_argument("--detector", type=Path, default=ROOT / "outputs/detection/model/round2.pt")
     parser.add_argument("--evaluation", type=Path, default=ROOT / "outputs/evaluation.json")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--task2-clip", type=Path,
+                        default=ROOT / "data/raw/Resting/25690519195143424.mp4",
+                        help="clip for the Task 2 detection video")
+    parser.add_argument("--task3-clip", type=Path,
+                        default=ROOT / "data/raw/Eating/25690519193422801.mp4",
+                        help="clip for the Task 3 features video")
     args = parser.parse_args()
 
     clips = args.clips or [
@@ -564,11 +795,20 @@ def main() -> int:
         render(info, args.out / "media" / f"{info['id']}.mp4")
         infos.append(info)
 
+    print(f"analysing {args.task2_clip.name}", flush=True)
+    task2 = analyse(args.task2_clip, model, config, detector, threshold)
+    render_detection(task2, detector, args.out / "media" / "task2-detection.mp4")
+
+    print(f"analysing {args.task3_clip.name}", flush=True)
+    task3 = analyse(args.task3_clip, model, config, detector, threshold)
+    samples = features.clip_samples(args.task3_clip)
+    render_features(task3, samples, args.out / "media" / "task3-features.mp4")
+
     for name in ("activity-timeline.png", "activity-by-hour.png"):
         shutil.copy(ROOT / "docs/figures" / name, args.out / "media" / name)
 
-    (args.out / "index.html").write_text(page(infos, evaluation, reported_numbers()))
-    print(f"wrote {args.out}/index.html and {len(infos)} clips")
+    (args.out / "index.html").write_text(page(infos, evaluation, reported_numbers(), task2, task3))
+    print(f"wrote {args.out}/index.html and {len(infos) + 2} clips")
     return 0
 
 
