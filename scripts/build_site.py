@@ -414,7 +414,7 @@ def page(clips: list[dict], evaluation: dict, numbers: dict, task2: dict, task3:
         f' &middot; {clip["id"][-6:]}</button>' for clip in clips)
     stages = "\n".join(
         f'''<div class="stage" data-clip="{clip["id"]}">
-  <video src="media/{clip["id"]}.mp4" muted loop playsinline preload="metadata"></video>
+  <video src="media/{clip["id"]}.mp4" controls muted loop playsinline preload="metadata"></video>
   <div class="timeline">
     <div class="band"><span class="bl">verified</span><div class="segs">{verified_segments(clip)}</div></div>
     <div class="band"><span class="bl">model</span><div class="segs">{model_segments(clip)}</div></div>
@@ -557,7 +557,7 @@ def page(clips: list[dict], evaluation: dict, numbers: dict, task2: dict, task3:
   <div class="row">
     <div>
       <div class="player" data-rows="task2">
-        <video src="media/task2-detection.mp4" muted loop playsinline preload="metadata"></video>
+        <video src="media/task2-detection.mp4" controls autoplay muted loop playsinline preload="metadata"></video>
         <div class="readout"><b class="now">-</b><span class="meta"></span></div>
       </div>
       <p class="caption">The detector runs on every frame here, not only on the middle of a
@@ -584,7 +584,7 @@ def page(clips: list[dict], evaluation: dict, numbers: dict, task2: dict, task3:
   <div class="row">
     <div>
       <div class="player" data-rows="task3">
-        <video src="media/task3-features.mp4" muted loop playsinline preload="metadata"></video>
+        <video src="media/task3-features.mp4" controls autoplay muted loop playsinline preload="metadata"></video>
         <div class="readout"><b class="now">-</b><span class="meta"></span></div>
       </div>
       <p class="caption">Moss outline is the silhouette Task 3 measures, rust is its body axis,
@@ -735,6 +735,7 @@ document.querySelectorAll('.player').forEach(player => {{
     }}
   }};
   video.addEventListener('timeupdate', paintOne);
+  video.play().catch(() => {{}});
   paintOne();
 }});
 
