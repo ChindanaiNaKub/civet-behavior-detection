@@ -102,36 +102,21 @@ def markdown(metrics: dict, title: str) -> str:
     return "\n".join(lines)
 
 
-def best_threshold(probabilities, y_true, classes, grid=None, max_abstain=None):
-    """The abstain threshold chosen on validation data.
+def best_threshold(probabilities, y_true, classes, grid=None):
+    """The abstain threshold with the best macro F1 on validation data.
 
-    Without `max_abstain` it is the threshold with the best macro F1, which keeps
-    every existing caller unchanged. Ties go to the lower threshold, which decides
-    more windows at the same score.
-
-    With `max_abstain` the cap is spent rather than merely bounded: the threshold
-    that leaves the most validation windows undecided while staying within the cap
-    wins, ties going to the lower threshold. Its macro F1 is the reported cost of
-    that coverage. A best-macro-F1 rule can abstain on nothing when the validation
-    calls it would drop are mostly correct, so a cap alone would never change the
-    answer.
-
+    Ties go to the lower threshold, which decides more windows at the same score.
     Call this on validation windows only; issue #1 forbids choosing the threshold
     on the test set.
     """
     grid = np.arange(0.0, 0.96, 0.05) if grid is None else grid
     classes = list(classes)
-    top = probabilities.argmax(axis=1)
-    confidence = probabilities.max(axis=1)
-    results = []
+    best = (float(grid[0]), -1.0)
     for threshold in grid:
+        top = probabilities.argmax(axis=1)
+        confidence = probabilities.max(axis=1)
         preds = [classes[i] if confidence[j] >= threshold else ABSTAIN for j, i in enumerate(top)]
-        results.append((float(threshold), report(y_true, preds, classes)))
-    if max_abstain is None:
-        threshold, result = max(results, key=lambda tr: (tr[1]["macro_f1"], -tr[0]))
-        return threshold, result["macro_f1"]
-    feasible = [(t, r) for t, r in results if r["abstain_rate"] <= max_abstain]
-    if not feasible:
-        raise ValueError(f"no threshold meets max_abstain={max_abstain}")
-    threshold, result = max(feasible, key=lambda tr: (tr[1]["abstain_rate"], -tr[0]))
-    return threshold, result["macro_f1"]
+        score = report(y_true, preds, classes)["macro_f1"]
+        if score > best[1] or (score == best[1] and threshold < best[0]):
+            best = (float(threshold), score)
+    return best

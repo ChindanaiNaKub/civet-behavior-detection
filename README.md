@@ -2,6 +2,20 @@
 
 Phase 2 project for building a checkable short-clip behavior-classification baseline from civet footage, covering all three tasks of the brief: image-based behavior classification (Task 1), YOLO-based behavior detection (Task 2) and behavior analysis from features (Task 3).
 
+## Submission materials
+
+| Item | Repository location and viewing links |
+|---|---|
+| GitHub repository | [ChindanaiNaKub/civet-behavior-detection](https://github.com/ChindanaiNaKub/civet-behavior-detection) |
+| Annotations | [data/annotations.csv](data/annotations.csv): final annotations; [data/annotations-second.csv](data/annotations-second.csv): second reviewer's annotations; [data/agreement.csv](data/agreement.csv): agreement results and reconciliation decisions; [data/splits.csv](data/splits.csv): train/validation/test assignments. See [data/README.md](data/README.md) for the data format. |
+| Presentation — **Final** | **[Open the final web slides](https://chindanainakub.github.io/civet-behavior-detection/presentation/)** — 28 slides with speaker notes. Source files: [presentation/index.html](presentation/index.html) and [presentation/deck.css](presentation/deck.css). Viewing instructions: [presentation/README.md](presentation/README.md). |
+| Training and evaluation results | [docs/BASELINE-DEMO.md](docs/BASELINE-DEMO.md): baseline training and demo; [docs/EVALUATION-REPORT.md](docs/EVALUATION-REPORT.md): behavior classification results; [docs/TASKS-2-AND-3.md](docs/TASKS-2-AND-3.md): YOLO and feature-based analysis; [docs/ACTIVITY-REPORT.md](docs/ACTIVITY-REPORT.md): Active/Inactive results. |
+| Example system outputs | [Open the demo website](https://chindanainakub.github.io/civet-behavior-detection/) — example videos with prediction timelines and activity charts. Page: [site/index.html](site/index.html); videos and charts: [site/media/](site/media/); report figures: [docs/figures/](docs/figures/). |
+
+Use the **web slides as the final presentation for presenting and submission**. The [28-slide PDF](presentation/CMZ-Phase-2-Deck.pdf) is a downloadable export; the [PPTX](docs/CMZ-Phase-2-Presentation.pptx) and [10-slide PDF](docs/CMZ-Phase-2-Presentation.pdf) are the earlier summary version.
+
+Model weights (`.pt`, `.pth`, `.onnx`) and generated experiment outputs in `outputs/`, `models/`, `checkpoints/` and `runs/` are not tracked in Git. The results reports are available in `docs/` at the locations listed above.
+
 ## Current status
 
 The pipeline is built and runs end to end. `data/annotations.csv` covers all 22 clips: the first annotator's verified intervals for the 14 train and validation clips, and the reconciled final intervals for the eight gold clips. The two gold passes, intended to be blind, were compared (Dice 0.597 over the eight clips, in `data/agreement.csv`) and reconciled with `scripts/reconcile.py`; the [evaluation report](docs/EVALUATION-REPORT.md) records why the second pass was not fully independent. The test set is locked: Gun signed `data/splits.csv` on 2026-10-20 (test windows Eating 7 / Locomotion 2 / Resting 6), and `scripts/split.py` refuses to overwrite a signed ledger. A baseline checkpoint has been trained on the train split and shown on a validation clip with a validation-selected threshold; see [Baseline training and clip demo](docs/BASELINE-DEMO.md). It was scored once on the locked test split on 2026-10-21: test macro F1 0.949 over 15 windows, with no abstentions. See the [held-out evaluation report](docs/EVALUATION-REPORT.md) for the per-class numbers, verified coverage, annotation agreement, the one error and the limits. The Phase 2 target was a reproducible baseline and timeline demo by **October 31, 2026**, and it is met.
@@ -11,7 +25,7 @@ The model classes are Eating, Locomotion and Resting. The brief calls the third 
 Tasks 2 and 3 were added to the scope on 2026-10-26, when the professor confirmed all three tasks are required ([ADR 0009](docs/adr/0009-build-tasks-2-and-3-on-auto-labels.md)). Neither task has a human-drawn label: Task 2 trains a YOLO detector on boxes the classical background model proposes, checked by a visual audit of 116 boxes, and Task 3 replaces keypoints with silhouette geometry. The detector reaches mAP50 0.537 on validation but only finds the animal in 59 percent of held-out frames, and the feature classifier reaches macro F1 0.422 on the locked test windows. Both numbers and what they do not prove are in [Tasks 2 and 3](docs/TASKS-2-AND-3.md).
 
 The second submission adds a second species and a second kind of footage: 25.59
-hours of banded civet (`ชะมดแผงสันหางดำ`) recorded by four fixed cameras on the
+hours of banded civet recorded by four fixed cameras on the
 night of 2026-04-05, with no annotation. The Phase 2 label source does not apply
 to it, so `scripts/activity.py` measures what a fixed camera can measure by
 itself — whether the animal is in view and whether it is moving — and labels each
@@ -24,13 +38,13 @@ always answering Active.
 ## Start here
 
 - [Live demo site](https://chindanainakub.github.io/civet-behavior-detection/) — plays three precomputed validation clips with the prediction timeline, then reports the banded civet activity numbers and figures, on any machine with a browser
-- [คู่มือหน้าตรวจสำหรับ Windows / Fedora Linux](docs/REVIEWER-QUICKSTART.md)
+- [Reviewer quickstart for Windows / Fedora Linux](docs/REVIEWER-QUICKSTART.md)
 - [Gold review handoff: second reviewer, reconciliation and test lock](docs/GOLD-REVIEW-HANDOFF.md)
 - [Baseline training and clip demo](docs/BASELINE-DEMO.md)
 - [Held-out evaluation report](docs/EVALUATION-REPORT.md)
 - [Tasks 2 and 3: detection and silhouette features](docs/TASKS-2-AND-3.md)
 - [Banded civet activity: the active and inactive table, four cameras](docs/ACTIVITY-REPORT.md)
-- [Phase 2 presentation](docs/CMZ-Phase-2-Presentation.pptx) ([PDF](docs/CMZ-Phase-2-Presentation.pdf)), a 10-slide summary of the three tasks, and the [reveal.js deck](presentation/index.html) ([PDF](presentation/CMZ-Phase-2-Deck.pdf)), the 28-slide version with speaker notes, the banded civet section and the demo slide
+- **[Final presentation — web slides](https://chindanainakub.github.io/civet-behavior-detection/presentation/)** — the authoritative 28-slide version with speaker notes, the banded civet section and the demo slide; [source](presentation/index.html), [PDF export](presentation/CMZ-Phase-2-Deck.pdf). The earlier 10-slide summary remains available as [PPTX](docs/CMZ-Phase-2-Presentation.pptx) and [PDF](docs/CMZ-Phase-2-Presentation.pdf).
 - [The four Task 3 features](docs/FEATURES.md)
 - [Phase 2 plan](docs/PHASE-2-PLAN.md)
 - [Footage and compute audit](docs/FOOTAGE-AUDIT.md)

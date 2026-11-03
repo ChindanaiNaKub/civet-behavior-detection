@@ -56,14 +56,11 @@ def load(path, device: str = "cuda"):
     return model.to(device).eval(), config
 
 
-def make_config(classes, extra: dict | None = None, motion: bool = False) -> dict:
+def make_config(classes, extra: dict | None = None) -> dict:
     config = {
         "classes": list(classes),
         "backbone": BACKBONE,
-        # Frames per window: the samples, doubled when each one carries a
-        # difference frame. A loader can then decode the count the checkpoint saw.
-        "samples": frames.SAMPLES * 2 if motion else frames.SAMPLES,
-        "motion": motion,
+        "samples": frames.SAMPLES,
         "wh": list(frames.WH),
     }
     config.update(extra or {})
