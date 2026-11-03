@@ -58,7 +58,11 @@ KERNEL_OPEN = cv2.getStructuringElement(cv2.MORPH_RECT, detect.OPEN_WH)
 
 @dataclass
 class Sample:
-    """Geometry of one silhouette, at full-resolution units."""
+    """Geometry of one silhouette, at full-resolution units.
+
+    ``mask`` and ``box`` are kept for drawing the measurement back onto the clip
+    (build_site.py); the box is the analysis-resolution box, not the full-res one.
+    """
 
     time_s: float
     body_angle_deg: float
@@ -66,6 +70,8 @@ class Sample:
     speed_px_s: float
     limb_extent_px: float
     box_area_px: float
+    mask: np.ndarray | None = None
+    box: tuple[int, int, int, int] | None = None
 
 
 @dataclass
@@ -233,6 +239,8 @@ def clip_samples(path: Path) -> list[Sample]:
                 speed,
                 limb_extent_px(mask, detect.SCALE),
                 float((x2 - x1) * (y2 - y1)),
+                mask,
+                box,
             )
         )
     return samples
